@@ -25,9 +25,9 @@ class Klawiatura:
         # self.środek = Kciuki(log, konfiguracja)
         self.rozdzielacz = SłownikDomyślny(lambda x: dzielniki_dla_słowa_o_długości(x))
 
-    def wygeneruj_kombinacje(self, sylaby, limit_prób):
+    def wygeneruj_akordy(self, słowo, sylaby, limit_prób):
         dzielniki_słowa = self.rozdzielacz[len(sylaby)]
-        kombinacje = []
+        akordy = []
         for gdzie_podzielić in dzielniki_słowa:
             (sylaby_lewe,
             sylaba_środkowa,
@@ -36,17 +36,17 @@ class Klawiatura:
             bez_inwersji = True
             malejące_lewe = []
             malejące_prawe = []
-            wygenerowano_odjemniki = False
             pozostały_kombinacje_do_przetestowania = True
 
             indeks_odjemników = -1
             odjemniki_sylab = []
             odejmuj = False
             bez_środka = False
+            niemalejące_zainicjalizowane = False
 
-            while limit_prób > 0 and pozostały_kombinacje_do_przetestowania:
-                # if słowo == "nać":
-                #         self.log.info(f"limit: {limit_prób}")
+            while limit_prób > 0:
+                # if słowo == "ona":
+                #        self.log.info(f"limit: {limit_prób}")
                 # Wszystkie literki powinny być dopasowane
                 # nagłos - lewa, śródgłos - kciuk(i), wygłos - prawa
                 # self.log.debug(f"Sylaby: {sylaby_lewe}|{sylaba_środkowa}|{sylaby_prawe}")
@@ -56,8 +56,8 @@ class Klawiatura:
                  fonemy_prawe) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
                                                             sylaba_środkowa,
                                                             sylaby_prawe)
-                # if słowo == "nać":
-                #     self.log.info(f"{fonemy_lewe} | {śródgłos} | {fonemy_prawe}")
+                # if słowo == "ona":
+                #    self.log.info(f"{fonemy_lewe} | {śródgłos} | {fonemy_prawe}")
                 #     śródgłos = []
                 waga_słowa = 0
                 for fonem in fonemy_lewe + śródgłos + fonemy_prawe:
@@ -66,11 +66,9 @@ class Klawiatura:
                     # if słowo == "nać":
                     #     self.log.info(f"nać bez środka śródgłos: {śródgłos}")
                     śródgłos = []
-                # ręka_lewa = RękaLewa(self.log, self.konfiguracja.KonfiguracjaKlawiatury)
-                # ręka_prawa = RękaPrawa(self.log, self.konfiguracja.KonfiguracjaKlawiatury)
 
                 kombinacja_środkowa = nic
-                if not (malejące_lewe or malejące_prawe or bez_inwersji):
+                if not niemalejące_zainicjalizowane:
                     fonemy_niemalejące = False
                     while not fonemy_niemalejące:
                         fonemy_lewe = self.język.odejmij_fonemy(fonemy_lewe, malejące_lewe)
@@ -87,19 +85,17 @@ class Klawiatura:
                                 malejące_lewe.append(gdzie[2])
                             else:
                                 malejące_prawe.append(gdzie[2])
-
-                if not wygenerowano_odjemniki:
                     odjemniki_sylab = self.wygeneruj_odjemniki(malejące_lewe, malejące_prawe)
-                    wygenerowano_odjemniki = True
+                    niemalejące_zainicjalizowane = True
                 if odejmuj and indeks_odjemników < len(odjemniki_sylab) and indeks_odjemników >= 0:
-                    self.log.info(f"odjemniki: {odjemniki_sylab}")
+                    # self.log.info(f"odjemniki: {odjemniki_sylab}")
                     (do_odjęcia_lewe,
                     do_odjęcia_prawe,
                     wzrost_niedopasowania) = odjemniki_sylab[indeks_odjemników]
-                    fonemy_lewe = self.język.odejmij_fonemy(fonemy_lewe,
-                                                    malejące_lewe[indeks_odjemników])
-                    fonemy_prawe = self.język.odejmij_fonemy(fonemy_prawe,
-                                                    malejące_prawe[indeks_odjemników])
+                    fonemy_lewe = self.język.odejmij_fonemy(fonemy_lewe, do_odjęcia_lewe)
+                                                    # malejące_lewe[indeks_odjemników])
+                    fonemy_prawe = self.język.odejmij_fonemy(fonemy_prawe, do_odjęcia_prawe)
+                                                    # malejące_prawe[indeks_odjemników])
 
                 pierwsza = True
                 ostatnia = False
@@ -138,24 +134,30 @@ class Klawiatura:
                 kompletny_akord = self.połącz_kombinacje(#self.ręka_lewa.akord_lewy(),
                                                             kombinacja_środkowa)#,
                                                             #self.ręka_prawa.akord_prawy())
-                kombinacje.append((kompletny_akord, niedopasowanie))
+                akordy.append((kompletny_akord, niedopasowanie))
                 limit_prób -= 1
+                if bez_środka:
+                    break
+                    # if słowo == "nać":
+                    #     self.log.info("nać bez środka")
+                    # bez_inwersji = False
+                    bez_środka = True
                 if odejmuj:
                     indeks_odjemników += 1
                     if indeks_odjemników >= len(odjemniki_sylab):
                         odejmuj = False
+                        bez_środka = True
                         pozostały_kombinacje_do_przetestowania = False
-                if bez_środka:
-                    # if słowo == "nać":
-                    #     self.log.info("nać bez środka")
-                    # bez_inwersji = False
-                    bez_środka = False
-                    # odejmuj = True
-                    pozostały_kombinacje_do_przetestowania = False
                 if bez_inwersji:
-                    bez_środka = True
+                    #bez_środka = True
+                    odejmuj = True
                     bez_inwersji = False
-        return kombinacje
+                # if limit_prób % 3 == 0:
+                #     break
+            self.zresetuj_klawisze()
+        # if słowo == "ona":
+        #    self.log.info(f"{akordy}")
+        return akordy
 
     def podziel_sylaby_na_strony(self, sylaby, gdzie_podzielić=-2):
         ilość_sylab = len(sylaby)
@@ -378,12 +380,13 @@ class Klawiatura:
                                    ((l_tyldogwiazdka, ltg_wszystko), (p_tyldogwiazdka, ptg_wszystko))),
                             niedopasowanie))
         return output
-    def zresetuj_klawisze(self):
-        self.ręka_lewa = RękaLewa(self.log, self.konfiguracja)
-        self.ręka_prawa = RękaPrawa(self.log, self.konfiguracja)
 
-        # self.ręka_lewa.zresetuj_klawisze()
-        # self.ręka_prawa.zresetuj_klawisze()
+    def zresetuj_klawisze(self):
+        # self.ręka_lewa = RękaLewa(self.log, self.konfiguracja)
+        # self.ręka_prawa = RękaPrawa(self.log, self.konfiguracja)
+
+        self.ręka_lewa.zresetuj_klawisze()
+        self.ręka_prawa.zresetuj_klawisze()
         # self.środek.zresetuj_klawisze()
 
 class Klawisz:
@@ -416,6 +419,7 @@ class Klawisz:
             self.początkowy = True
         if inny_klawisz.końcowy:
             self.końcowy = True
+        self.waga += inny_klawisz.waga
 
     def musi_zostać(self):
         return self.początkowy or self.końcowy
@@ -509,7 +513,8 @@ class RękaLewa:
         for palec in [self.palec_mały,
                       self.palec_serdeczny,
                       self.palec_środkowy,
-                      self.palec_wskazujący]:
+                      self.palec_wskazujący,
+                      self.kciuk_lewy]:
             for klawisz in palec.klawisze.values():
                 klawisz.zresetuj()
 
@@ -578,6 +583,7 @@ class RękaPrawa:
         self.dostępne_id_kombinacji = 0
 
     def zresetuj_klawisze(self):
+        self.dostępne_id_kombinacji = 0
         for palec in [self.palec_mały,
                       self.palec_serdeczny,
                       self.palec_środkowy,
@@ -675,20 +681,20 @@ class Palec:
     def tekst(self):
         tekst = nic
         for klawisz in self.obsługiwane_klawisze:
-            if klawisz in self.klawisze.keys() and self.klawisze[klawisz].waga:
+            if klawisz in self.klawisze.keys() and self.klawisze[klawisz].waga > 0:
                 tekst += klawisz
         if tekst in self.wspierane_kombinacje:
             return tekst
 
         klawisz_do_deaktywacji = None
-        for użyty_klawisz in self.klawisze.values():
-            if  self.można_deaktywować(użyty_klawisz):
+        for klawisz in self.klawisze.values():
+            if klawisz.waga > 0 and self.można_deaktywować(klawisz):
             # if not użyty_klawisz.musi_zostać() \
             #   and self.można_deaktywować(użyty_klawisz):
                 if not klawisz_do_deaktywacji:
-                    klawisz_do_deaktywacji = użyty_klawisz
-                elif klawisz_do_deaktywacji.waga > użyty_klawisz.waga:
-                    klawisz_do_deaktywacji = użyty_klawisz
+                    klawisz_do_deaktywacji = klawisz
+                elif klawisz_do_deaktywacji.waga > klawisz.waga:
+                    klawisz_do_deaktywacji = klawisz
 
         if not klawisz_do_deaktywacji:
             self.log.error(f"Nie znalazłem prawidłowej kombinacji dla {self.klawisze.keys()}")
@@ -723,9 +729,9 @@ class Palec:
 
     def można_deaktywować(self, usuwany_klawisz):
         tekst = ""
-        for klawisz in self.obsługiwane_klawisze:
-            if klawisz in self.klawisze.keys():
-                tekst += klawisz
+        for znak in self.obsługiwane_klawisze:
+            if znak in self.klawisze.keys() and self.klawisze[znak].waga > 0:
+                tekst += znak
         tekst = tekst.replace(usuwany_klawisz.znak, nic)
         return tekst in self.wspierane_kombinacje
         

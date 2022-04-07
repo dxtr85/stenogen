@@ -58,7 +58,7 @@ def main():
         if słowo in istniejące_słowa or słowo.isnumeric():
             continue
 
-        udało_się = generator.wygeneruj_kombinacje(słowo, limit_prób=5)
+        udało_się = generator.wygeneruj_akordy(słowo, limit_prób=5)
         if not udało_się:
             niepowodzenia.append((słowo, frekwencja))
         numer_generacji += 1

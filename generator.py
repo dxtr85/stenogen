@@ -79,7 +79,7 @@ class Generator():
                         kombinacje_dodane.append(kombinacja)
         return kombinacje_dodane
                 
-    def wygeneruj_kombinacje(self, słowo, limit_prób=2):
+    def wygeneruj_akordy(self, słowo, limit_prób=2):
         self.postęp += 1
 
         # Dla 'w', 'z'
@@ -90,7 +90,7 @@ class Generator():
                 sylaby = [słowo]
             else:
                 raise KeyError(f"Nie znam sylab, {e}")
-        kombinacje = self.klawiatura.wygeneruj_kombinacje(sylaby, limit_prób)
+        kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_prób)
         dodane = []
         if kombinacje:
             dodane = self._dopasuj_kombinacje(słowo, kombinacje)
@@ -111,7 +111,6 @@ class Generator():
                 # if słowo == "nać":
                 #     self.log.info(f"nowe dla nać: {nowe_podkombinacje}")
                 dodane += self._dopasuj_kombinacje(słowo, nowe_kombinacje)
-        self.klawiatura.zresetuj_klawisze()
         if self.postęp % self.loguj_postęp_co == 0:
             self.log.info(f"{self.postęp}: {słowo} - wygenerowano")
         if len(dodane) == 0:
