@@ -20,144 +20,264 @@ class Klawiatura:
         self.prawe_indeksy_klawiszy = konfiguracja.prawe_indeksy_klawiszy
         self.znaki_środka = konfiguracja.znaki_środka
         self.dostępne_id_kombinacji = 0
+        self.kombinacje = []
         self.ręka_lewa = RękaLewa(log, konfiguracja)
         self.ręka_prawa = RękaPrawa(log, konfiguracja)
         # self.środek = Kciuki(log, konfiguracja)
         self.rozdzielacz = SłownikDomyślny(lambda x: dzielniki_dla_słowa_o_długości(x))
 
-    def wygeneruj_akordy(self, słowo, sylaby, limit_prób):
+    def wygeneruj_akordy(self, słowo, sylaby, limit_niedopasowania, limit_prób, bez_środka=False):
         dzielniki_słowa = self.rozdzielacz[len(sylaby)]
         akordy = []
         for gdzie_podzielić in dzielniki_słowa:
-            (sylaby_lewe,
-            sylaba_środkowa,
-            sylaby_prawe) = self.podziel_sylaby_na_strony(sylaby,
-                                                          gdzie_podzielić)
-            bez_inwersji = True
-            malejące_lewe = []
-            malejące_prawe = []
-            pozostały_kombinacje_do_przetestowania = True
+            if limit_prób <= 0:
+                break
+            limit_prób -= 1
+            
+            self.log.debug(f"Dzielę {słowo} w {gdzie_podzielić}, limit: {limit_prób}")
+            (id_środkowej_kombinacji,
+             kombinacja_środkowa,
+             waga_środka,
+             waga_słowa) = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić)
+            self.log.debug(f"Waga słowa: {waga_słowa}")
+            if bez_środka:
+                kombinacja_środkowa = ""
+                waga_środka = 0
 
-            indeks_odjemników = -1
-            odjemniki_sylab = []
-            odejmuj = False
-            bez_środka = False
-            niemalejące_zainicjalizowane = False
+            kombinacje_do_odjęcia_lewe = self.do_odjęcia_aby_uzyskać_ciąg_niemalejący(self.minimalne_indeksy_lewe)
+            kombinacje_do_odjęcia_prawe = self.do_odjęcia_aby_uzyskać_ciąg_niemalejący(self.minimalne_indeksy_prawe, id_środkowej_kombinacji + 1)
 
-            while limit_prób > 0:
-                # if słowo == "ona":
-                #        self.log.info(f"limit: {limit_prób}")
-                # Wszystkie literki powinny być dopasowane
-                # nagłos - lewa, śródgłos - kciuk(i), wygłos - prawa
-                # self.log.debug(f"Sylaby: {sylaby_lewe}|{sylaba_środkowa}|{sylaby_prawe}")
-                wzrost_niedopasowania = 0
-                (fonemy_lewe,
-                 śródgłos,
-                 fonemy_prawe) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
-                                                            sylaba_środkowa,
-                                                            sylaby_prawe)
-                # if słowo == "ona":
-                #    self.log.info(f"{fonemy_lewe} | {śródgłos} | {fonemy_prawe}")
-                #     śródgłos = []
-                waga_słowa = 0
-                for fonem in fonemy_lewe + śródgłos + fonemy_prawe:
-                    waga_słowa += fonem[1]
-                if bez_środka:
-                    # if słowo == "nać":
-                    #     self.log.info(f"nać bez środka śródgłos: {śródgłos}")
-                    śródgłos = []
-
-                kombinacja_środkowa = nic
-                if not niemalejące_zainicjalizowane:
-                    fonemy_niemalejące = False
-                    while not fonemy_niemalejące:
-                        fonemy_lewe = self.język.odejmij_fonemy(fonemy_lewe, malejące_lewe)
-                        # self.log.info(f"Odjęte lewe: {fonemy_lewe}")
-                        fonemy_prawe = self.język.odejmij_fonemy(fonemy_prawe, malejące_prawe)
-                        (fonemy_niemalejące, który, gdzie) = self.niemalejące(fonemy_lewe,
-                                                                              fonemy_prawe,
-                                                                              bez_inwersji)
-                        #  Zbieramy informacje o fonemach, które być może
-                        #  trzeba będzie wyciszyć aby uzyskać unikalną
-                        #  kombinację
-                        if not fonemy_niemalejące:
-                            if który == 0:
-                                malejące_lewe.append(gdzie[2])
-                            else:
-                                malejące_prawe.append(gdzie[2])
-                    odjemniki_sylab = self.wygeneruj_odjemniki(malejące_lewe, malejące_prawe)
-                    niemalejące_zainicjalizowane = True
-                if odejmuj and indeks_odjemników < len(odjemniki_sylab) and indeks_odjemników >= 0:
-                    # self.log.info(f"odjemniki: {odjemniki_sylab}")
-                    (do_odjęcia_lewe,
-                    do_odjęcia_prawe,
-                    wzrost_niedopasowania) = odjemniki_sylab[indeks_odjemników]
-                    fonemy_lewe = self.język.odejmij_fonemy(fonemy_lewe, do_odjęcia_lewe)
-                                                    # malejące_lewe[indeks_odjemników])
-                    fonemy_prawe = self.język.odejmij_fonemy(fonemy_prawe, do_odjęcia_prawe)
-                                                    # malejące_prawe[indeks_odjemników])
-
-                pierwsza = True
-                ostatnia = False
-                długość_lewych = len(fonemy_lewe)
-                for i in range(długość_lewych):
-                    fonem = fonemy_lewe[i]
-                    if i == długość_lewych -1:
-                        ostatnia = True
-                    znaki = self.klawisze_dla_fonemu(fonem)
-                    self.ręka_lewa.zbuduj_kombinację(znaki, pierwsza, ostatnia)
-                    pierwsza = False
-                for fonem in śródgłos:
-                    znaki = self.język.fonemy_samogłoskowe[fonem[0]][0]
-                    kombinacja_środkowa += znaki
-                pierwsza = True
-                ostatnia = False
-                długość_fonemów_prawych = len(fonemy_prawe)
-                for i in range(długość_fonemów_prawych):
-                    fonem = fonemy_prawe[i]
-                    if i + 1 == długość_fonemów_prawych:
-                        ostatnia = True
-                    znaki = self.klawisze_dla_fonemu(fonem, prawe=True)
-                    self.ręka_prawa.zbuduj_kombinację(znaki, pierwsza, ostatnia)
-                    pierwsza = False
-                # self.log.debug(f"{słowo} {waga_słowa}, Lewa:{ręka_lewa.waga()} Prawa: {ręka_prawa.waga()}")
-                niedopasowanie = waga_słowa + wzrost_niedopasowania\
-                  - self.ręka_lewa.waga() - self.ręka_prawa.waga()
-                # self.log.debug(f"{słowo} NPo: {niedopasowanie}")
-                # kompletny_akord: ("ZN~*AKI",
-                #   ( (dodanie_tyldy_z_lewej, czy_wszystkie_klawisze),
-                #     (dodanie_tyldy_z_prawej, czy_wszystkie_klawisze) ),
-                #   ( (dodanie_gwiazdki_z_lewej, czy_wszystkie_klawisze),
-                #     (dodanie_gwiazdki_z_prawej, czy_wszystkie_klawisze) ),
-                #   ( (dodanie_tyldogwiazdki_z_lewej, czy_wszystkie_klawisze),
-                #     (dodanie_tyldogwiazdki_z_prawej, czy_wszystkie_klawisze) ) )
-                kompletny_akord = self.połącz_kombinacje(#self.ręka_lewa.akord_lewy(),
-                                                            kombinacja_środkowa)#,
-                                                            #self.ręka_prawa.akord_prawy())
-                akordy.append((kompletny_akord, niedopasowanie))
-                limit_prób -= 1
-                if bez_środka:
-                    break
-                    # if słowo == "nać":
-                    #     self.log.info("nać bez środka")
-                    # bez_inwersji = False
-                    bez_środka = True
-                if odejmuj:
-                    indeks_odjemników += 1
-                    if indeks_odjemników >= len(odjemniki_sylab):
-                        odejmuj = False
-                        bez_środka = True
-                        pozostały_kombinacje_do_przetestowania = False
-                if bez_inwersji:
-                    #bez_środka = True
-                    odejmuj = True
-                    bez_inwersji = False
-                # if limit_prób % 3 == 0:
-                #     break
-            self.zresetuj_klawisze()
-        # if słowo == "ona":
-        #    self.log.info(f"{akordy}")
+            (akord, waga_akordu) = self.akord_bez_inwersji(kombinacje_do_odjęcia_lewe,
+                                            kombinacja_środkowa,
+                                            kombinacje_do_odjęcia_prawe)
+            niedopasowanie = waga_słowa - waga_środka - waga_akordu
+            self.log.debug(f"Niedopasowanie: {niedopasowanie}")
+            if niedopasowanie < 0:
+                self.log.error(f"Niedopasowanie dla {słowo}: {niedopasowanie}")
+                self.log.error(f"  waga słowa {waga_słowa}, waga środka: {waga_środka}")
+                self.log.error(f"  waga akordu {waga_akordu}")
+            elif niedopasowanie <= limit_niedopasowania:
+                akordy.append((akord, niedopasowanie))
+            self.log.debug(f"Bez inv: {akordy}")
+            if limit_prób > 0:
+                akordy += self.akordy_z_inwersją(kombinacje_do_odjęcia_lewe,
+                                                kombinacja_środkowa,
+                                                kombinacje_do_odjęcia_prawe,
+                                                waga_słowa,
+                                                waga_środka,
+                                                limit_niedopasowania,
+                                                limit_prób)
+            self.log.debug(f"Z inv: {akordy}")
+            self.zresetuj_klawiaturę()
         return akordy
+
+    def akord_bez_inwersji(self, od_lewe, środek, od_prawe):
+        komb_lewe = []
+        komb_prawe = []
+        max_idx = len(self.kombinacje) - 1
+        for id_kombinacji in od_lewe:
+            if id_kombinacji > max_idx:
+                self.log.error(f"Index za duży: {id_kombinacji}, dostępne komb: {self.kombinacje}")
+                continue
+            lewa_do_odj = self.kombinacje[id_kombinacji]
+            self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
+            komb_lewe.append(lewa_do_odj)
+        for id_kombinacji in od_prawe:
+            if id_kombinacji > max_idx:
+                self.log.error(f"Index za duży: {id_kombinacji}, dostępne komb: {self.kombinacje}")
+                continue
+            prawa_do_odj = self.kombinacje[id_kombinacji]
+            self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
+            komb_prawe.append(prawa_do_odj)
+        akord = self.połącz_kombinacje(środek)
+        waga = self.waga_na_klawiaturze()
+        # self.log.debug(f"Ko0 do aktywacji: {komb_lewe}")
+        for kombo in komb_lewe:
+            self.ręka_lewa.aktywuj_kombinację(kombo)
+        for kombo in komb_prawe:
+            self.ręka_prawa.aktywuj_kombinację(kombo)
+        return (akord, waga)
+
+    def akordy_z_inwersją(self, od_lewe, środek, od_prawe,
+                          waga_słowa, waga_środka,
+                          limit_niedopasowania, limit_prób):
+        self.log.debug(f"z inw, limit: {limit_prób}")
+        dł_lewe = len(od_lewe)
+        dł_prawe = len(od_prawe)
+        akordy = []
+        wszystkie_lewe_odjęte = False
+        wszystkie_prawe_odjęte = False
+        następny_do_pominięcia_lewy = 0
+        następny_do_pominięcia_prawy = 0
+
+        max_idx = len(self.kombinacje) - 1
+        while limit_prób > 0:
+            komb_lewe = []
+            komb_prawe = []
+            self.log.debug(f"z inw w pętli, limit: {limit_prób}")
+            if not wszystkie_lewe_odjęte:
+                for id in od_prawe:
+                    if id > max_idx:
+                        self.log.error(f"Index za duży: {id}, dostępne: {self.kombinacje}")
+                        continue
+
+                    prawa_do_odj = self.kombinacje[id]
+                    self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
+                    komb_prawe.append(prawa_do_odj)
+                if następny_do_pominięcia_lewy >= dł_lewe:
+                    wszystkie_lewe_odjęte = True
+                else:
+                    for idx in range(dł_lewe):
+                        if idx == następny_do_pominięcia_lewy:
+                            continue
+                        elif od_lewe[idx] > max_idx:
+                            self.log.error(f"Idx za duży: {od_lewe[idx]}, dostępne: {self.kombinacje}")
+                            continue
+                        lewa_do_odj = self.kombinacje[od_lewe[idx]]
+                        self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
+                        komb_lewe.append(lewa_do_odj)
+                    akord = self.połącz_kombinacje(środek)
+                    waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
+                    niedopasowanie = waga_słowa - waga_środka - waga_akordu
+                    self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {niedopasowanie}(waga ako: {waga_akordu})")
+                    if niedopasowanie <= limit_niedopasowania:
+                        self.log.debug(f"Dodaję: {akord}")
+                        akordy.append((akord, niedopasowanie))
+                    # self.log.debug(f"KoMb do aktywacji: {komb_lewe}")
+                    for komb in komb_lewe:
+                        self.ręka_lewa.aktywuj_kombinację(komb)
+                    następny_do_pominięcia_lewy += 1
+                    limit_prób -= 1
+                for kombo in komb_prawe:
+                    self.ręka_prawa.aktywuj_kombinację(kombo)
+                if limit_prób <= 0:
+                    break
+
+            elif not wszystkie_prawe_odjęte:
+                for id in od_lewe:
+                    if id > max_idx:
+                        self.log.error(f"Index za duży: {id}, dostępne: {self.kombinacje}")
+                        continue
+
+                    lewa_do_odj = self.kombinacje[id]
+                    self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
+                    komb_lewe.append(lewa_do_odj)
+                if następny_do_pominięcia_prawy >= dł_prawe:
+                    wszystkie_prawe_odjęte = True
+                else:
+                    for idx in range(dł_prawe):
+                        if idx == następny_do_pominięcia_prawy:
+                            continue
+                        elif od_prawe[idx] > max_idx:
+                            self.log.error(f"pIdx za duży: {od_prawe[idx]},dostępne: {self.kombinacje}")
+                            continue
+                        prawa_do_odj = self.kombinacje[od_prawe[idx]]
+                        self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
+                    akord = self.połącz_kombinacje(środek)
+                    waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
+                    niedopasowanie = waga_słowa - waga_środka - waga_akordu
+                    if niedopasowanie <= limit_niedopasowania:
+                        akordy.append((akord, niedopasowanie))
+                    for idx in range(dł_prawe):
+                        if idx == następny_do_pominięcia_prawy:
+                            continue
+                        elif od_prawe[idx] > max_idx:
+                            self.log.error(f"pIdx za duży: {od_prawe[idx]},dostępne: {self.kombinacje}")
+                            continue
+                        prawa_do_przywrócenia = self.kombinacje[od_prawe[idx]]
+                        self.ręka_prawa.aktywuj_kombinację(prawa_do_przywrócenia)
+                    następny_do_pominięcia_prawy += 1
+                    limit_prób -= 1
+                # self.log.debug(f"Ko do aktywacji: {komb_lewe}")
+                for kombo in komb_lewe:
+                    self.ręka_lewa.aktywuj_kombinację(kombo)
+                if limit_prób <= 0:
+                    break
+            else:
+                break
+        return akordy
+
+    def zbuduj_kombinacje_dla_sylab(self, sylaby, gdzie_podzielić):
+        (sylaby_lewe,
+        sylaba_środkowa,
+        sylaby_prawe) = self.podziel_sylaby_na_strony(sylaby,
+                                                      gdzie_podzielić)
+        self.log.info(f"Podzielone: {sylaby_lewe} {sylaba_środkowa} {sylaby_prawe}")
+        kombinacje_lewe = []
+        kombinacja_środkowa = ""
+        kombinacje_prawe = []
+        dostępne_id_kombinacji = 0
+        (fonemy_lewe_orig,
+         śródgłos_orig,
+         fonemy_prawe_orig,
+         waga_słowa,
+         waga_środka) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
+                                                    sylaba_środkowa,
+                                                    sylaby_prawe)
+        dbg = [["kie", "dy"]]
+        if sylaby in dbg:
+            self.log.info(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
+        pierwsza = True
+        ostatnia = False
+        długość_lewych = len(fonemy_lewe_orig)
+        for i in range(długość_lewych):
+            fonem = fonemy_lewe_orig[i]
+            # if i == długość_lewych -1:
+            #     ostatnia = True
+            znaki = self.klawisze_dla_fonemu(fonem)
+            if sylaby in dbg:
+                self.log.info(f"{sylaby} lewe: {znaki} id: {dostępne_id_kombinacji}")
+            kombinacja = self.ręka_lewa.zbuduj_kombinację(dostępne_id_kombinacji,
+                                                            znaki,
+                                                            pierwsza,
+                                                            ostatnia)
+            pierwsza = False
+            kombinacje_lewe.append(kombinacja)
+            dostępne_id_kombinacji += 1
+            if sylaby in dbg and kombinacja:
+                self.log.info(f"{sylaby}: klaw L: {kombinacja.klawisze.keys()}")
+
+        id_środkowej_kombinacji = len(kombinacje_lewe) - 1  # Workaround na pusty środek
+        for fonem in śródgłos_orig:
+            znaki = self.język.fonemy_samogłoskowe[fonem[0]][0]
+            for znak in znaki:
+                if znak not in kombinacja_środkowa:
+                    kombinacja_środkowa += znak
+            id_środkowej_kombinacji = dostępne_id_kombinacji
+            dostępne_id_kombinacji += 1
+        if sylaby in dbg:
+            self.log.info(f"{sylaby}: środek: {kombinacja_środkowa}")
+        # pierwsza = True
+        ostatnia = False
+        długość_prawych = len(fonemy_prawe_orig)
+        for i in range(długość_prawych):
+            fonem = fonemy_prawe_orig[i]
+            if i == długość_prawych -1:
+                ostatnia = True
+            znaki = self.klawisze_dla_fonemu(fonem, prawe=True)
+            if sylaby in dbg:
+                self.log.info(f"{sylaby} prawe: {znaki} id: {dostępne_id_kombinacji}(ost: {ostatnia})")
+            kombinacja = self.ręka_prawa.zbuduj_kombinację(dostępne_id_kombinacji,
+                                                           znaki,
+                                                           pierwsza,
+                                                           ostatnia)
+            # pierwsza = False
+            kombinacje_prawe.append(kombinacja)
+            dostępne_id_kombinacji += 1
+            if sylaby in dbg and kombinacja:
+                self.log.info(f"{sylaby}: klaw P: {kombinacja.klawisze.keys()}")
+        self.kombinacje = kombinacje_lewe + [kombinacja_środkowa] + kombinacje_prawe
+        if sylaby in dbg and kombinacja:
+                self.log.info(f"{sylaby}: kombinacje: {kombinacje_lewe} {kombinacja_środkowa} {kombinacje_prawe}")
+        self.minimalne_indeksy_lewe = self.minimalne_indeksy_kombinacji(kombinacje_lewe)
+        self.minimalne_indeksy_prawe = self.minimalne_indeksy_kombinacji(kombinacje_prawe)
+        return (id_środkowej_kombinacji, kombinacja_środkowa, waga_środka, waga_słowa)
+
+    def minimalne_indeksy_kombinacji(self, kombinacje):
+        minimalne = []
+        for kombinacja in kombinacje:
+            minimalne.append(kombinacja.minimalny_indeks)
+        return minimalne
 
     def podziel_sylaby_na_strony(self, sylaby, gdzie_podzielić=-2):
         ilość_sylab = len(sylaby)
@@ -177,7 +297,7 @@ class Klawiatura:
             if gdzie_podzielić == ilość_sylab - 1:
                 sylaby_prawe = []
             else:
-                sylaby_prawe = [sylaby[gdzie_podzielić + 1]]
+                sylaby_prawe = sylaby[gdzie_podzielić + 1:]
             return (sylaby_lewe,
                     sylaby[gdzie_podzielić],
                     sylaby_prawe)
@@ -228,91 +348,31 @@ class Klawiatura:
         return (ręka_lewa_znaki + wynik + ręka_prawa_znaki,
                 (ręka_lewa[1], ręka_prawa[1]),  # dodanie tyldy możliwe
                 (ręka_lewa[2], ręka_prawa[2]),  # dodanie gwiazdki możliwe
-                (ręka_lewa[3], ręka_prawa[3]),)  # dodanie tyldogwiazdki możliwe
+                (ręka_lewa[3], ręka_prawa[3]))  # dodanie tyldogwiazdki możliwe
+    def waga_na_klawiaturze(self):
+        # self.log.info(f"L:{self.ręka_lewa.waga()} P:{self.ręka_prawa.waga()}")
+        return self.ręka_lewa.waga() + self.ręka_prawa.waga()
 
-    def wygeneruj_odjemniki(self, malejące_lewe, malejące_prawe):
-        łączna_waga = 0
-        odjemniki = []
-        for sylaba in malejące_lewe + malejące_prawe:
-            łączna_waga += sylaba[1]
-        for sylaba in malejące_lewe:
-            odjemniki.append(([sylaba], malejące_prawe, łączna_waga - sylaba[1]))
-        for sylaba in malejące_prawe:
-            odjemniki.append((malejące_lewe, [sylaba], łączna_waga - sylaba[1]))
-        return odjemniki
-
-    def niemalejące(self, fonemy_lewe, fonemy_prawe, bez_inwersji=False):
-        # print(f"Niemalejące?: {fonemy_lewe}|{fonemy_prawe}")
-        inwersja_użyta = False
-        if bez_inwersji:
-            inwersja_użyta = True
-        indeksy = self.lewe_indeksy_klawiszy
-        indeksy_fonemów_lewe = [(0, 0, nic)]  # (indeks_klawisza, indeks_pomocniczy, (fonem, waga))
-        j = 0
-        for i in range(len(fonemy_lewe)):
-            fonem = fonemy_lewe[i]
-            minimalny_indeks_klawisza = 5
-            # print(f"Fonem:{fonem} w {fonemy_lewe}")
-            for klawisz in self.klawisze_dla_fonemu(fonem[0]):
-                bieżący_indeks = indeksy[klawisz]
-                if bieżący_indeks < minimalny_indeks_klawisza:
-                    minimalny_indeks_klawisza = bieżący_indeks
-            if minimalny_indeks_klawisza != indeksy_fonemów_lewe[-1][0]:
-                indeksy_fonemów_lewe.append((minimalny_indeks_klawisza, j, fonem))
-                j += 1
-        indeksy_fonemów_lewe = indeksy_fonemów_lewe[1:]
-        (jest_niemalejący, gdzie_nie_jest) = self.ciąg_niemalejący(indeksy_fonemów_lewe[1:])
-        if not jest_niemalejący:
-            if not inwersja_użyta:
-                # print(f"nie jest: {gdzie_nie_jest} indeksy: {indeksy_fonemów_lewe}")
-                tymczasowy = indeksy_fonemów_lewe[gdzie_nie_jest[1] - 1]
-                indeksy_fonemów_lewe[gdzie_nie_jest[1] - 1] = indeksy_fonemów_lewe[gdzie_nie_jest[1]]
-                indeksy_fonemów_lewe[gdzie_nie_jest[1]] = tymczasowy
-                inwersja_użyta = True
-                (jest_niemalejący, gdzie_nie_jest) = self.ciąg_niemalejący(indeksy_fonemów_lewe)
-                if not jest_niemalejący:
-                    return (False, 0, gdzie_nie_jest)
-            else:
-                return (False, 0, gdzie_nie_jest)
-
-        indeksy_fonemów_prawe = [(5, 0, nic)]
-        # print(f"sprawdzam: {fonemy_lewe}||{fonemy_prawe}")
-        indeksy = self.prawe_indeksy_klawiszy
-        j = 0
-        for i in range(len(fonemy_prawe)):
-            fonem = fonemy_prawe[i]  # ('di', waga)
-            minimalny_indeks_klawisza = 10
-            for klawisz in self.klawisze_dla_fonemu(fonem[0], prawe=True):
-                bieżący_indeks = indeksy[klawisz]
-                if bieżący_indeks < minimalny_indeks_klawisza:
-                    minimalny_indeks_klawisza = bieżący_indeks
-            if minimalny_indeks_klawisza != indeksy_fonemów_prawe[-1][0]:
-                indeksy_fonemów_prawe.append((minimalny_indeks_klawisza, j, fonem))
-                j += 1
-        indeksy_fonemów_prawe = indeksy_fonemów_prawe[1:]
-        (jest_niemalejący, gdzie_nie_jest) = self.ciąg_niemalejący(indeksy_fonemów_prawe)
-        if not jest_niemalejący and not inwersja_użyta:
-            # print(f"male: {gdzie_nie_jest} - {indeksy_fonemów_prawe}")
-            tymczasowy = indeksy_fonemów_prawe[gdzie_nie_jest[1] - 1]
-            indeksy_fonemów_prawe[gdzie_nie_jest[1] - 1] = indeksy_fonemów_prawe[gdzie_nie_jest[1]]
-            indeksy_fonemów_prawe[gdzie_nie_jest[1]] = tymczasowy
-            inwersja_użyta = True
-            (jest_niemalejący, gdzie_nie_jest) = self.ciąg_niemalejący(indeksy_fonemów_prawe)
-            if not jest_niemalejący:
-                return (False, 1, gdzie_nie_jest)
-            return (True, None, None)
-        elif jest_niemalejący:
-            return (True, None, None)
-        return (False, 1, gdzie_nie_jest)
-
+    def do_odjęcia_aby_uzyskać_ciąg_niemalejący(self, ciąg, dodaj_do_indeksów=0):
+        # z_inwersją = False
+        do_odjęcia = []
+        odjęto = 0
+        (niemalejący, co_odjąć) = self.ciąg_niemalejący(ciąg)
+        while not niemalejący:
+            do_odjęcia.append(odjęto + co_odjąć + dodaj_do_indeksów)
+            ciąg = ciąg[:co_odjąć] + ciąg[co_odjąć + 1:]
+            (niemalejący, co_odjąć) = self.ciąg_niemalejący(ciąg)
+            odjęto += 1
+        return do_odjęcia
+        
     def ciąg_niemalejący(self, ciąg):
         długość_ciągu = len(ciąg)
         if długość_ciągu < 2:
             return (True, None)
         else:
             for i in range(1, długość_ciągu):
-                if ciąg[i][0] < ciąg[i-1][0]:
-                    return (False, ciąg[i])
+                if ciąg[i] < ciąg[i-1]:
+                    return (False, i)
         return (True, None)
 
     def dodaj_znaki_specjalne_do_kombinacji(self, kombinacja):
@@ -366,38 +426,41 @@ class Klawiatura:
         istniejąca_gwiazdka = nic
         if gwiazdka_już_jest:
             istniejąca_gwiazdka = gwiazdka
-
+        wzrost_niedopasowania = 0
         if not tylda_już_jest and (l_tylda or p_tylda):
             nowe_kombinacje.append(gołe_lewe + tylda + istniejąca_gwiazdka + gołe_prawe)
+            wzrost_niedopasowania += 1
         if not gwiazdka_już_jest and (l_gwiazdka or p_gwiazdka):
             nowe_kombinacje.append(gołe_lewe + istniejąca_tylda + gwiazdka + gołe_prawe)
+            wzrost_niedopasowania += 1
         if not (tylda_już_jest and gwiazdka_już_jest) and (l_tyldogwiazdka or p_tyldogwiazdka):
             nowe_kombinacje.append(gołe_lewe + tylda + gwiazdka + gołe_prawe)
+            wzrost_niedopasowania += 1
         output = []
         for nowa in nowe_kombinacje:
             output.append( ((nowa, ((l_tylda, lt_wszystko),(p_tylda, pt_wszystko)),
                                    ((l_gwiazdka, lg_wszystko), (p_gwiazdka, pg_wszystko)),
                                    ((l_tyldogwiazdka, ltg_wszystko), (p_tyldogwiazdka, ptg_wszystko))),
-                            niedopasowanie))
+                            niedopasowanie + wzrost_niedopasowania))
         return output
 
-    def zresetuj_klawisze(self):
-        # self.ręka_lewa = RękaLewa(self.log, self.konfiguracja)
-        # self.ręka_prawa = RękaPrawa(self.log, self.konfiguracja)
-
-        self.ręka_lewa.zresetuj_klawisze()
-        self.ręka_prawa.zresetuj_klawisze()
-        # self.środek.zresetuj_klawisze()
+    def zresetuj_klawiaturę(self):
+        self.ręka_lewa.zresetuj_rękę()
+        self.ręka_prawa.zresetuj_rękę()
+        self.minimalne_indeksy_lewe = []
+        self.minimalne_indeksy_prawe = []
+        # self.środek.zresetuj_kciuki()
 
 class Klawisz:
-    def __init__(self, znak, indeks, kombinacja_id, waga=1, samodzielny=0, początkowy=False, końcowy=False):
+    def __init__(self, log, znak, indeks, kombinacja_id,
+                 waga=1, samodzielny=0,
+                 początkowy=False, końcowy=False):
+        self.log = log
         self.znak = znak
         self.waga = waga
-        # if początkowy or końcowy:
-        #     self.waga += 1
         self.indeks = indeks
-        self.kombinacja = set()
-        self.kombinacja.add(kombinacja_id)
+        self.kombinacje = SłownikDomyślny(lambda x: 0)
+        self.kombinacje[kombinacja_id] = 1
         self.początkowy = początkowy
         self.końcowy = końcowy
         self.samodzielny = samodzielny
@@ -406,110 +469,68 @@ class Klawisz:
         self.waga = 0
         self.początkowy = False
         self.końcowy = False
-        self.samodzielny = False
-        self.kombinacja = set()
+        self.samodzielny = 0
+        self.kombinacje = SłownikDomyślny(lambda x: 0)
 
-    def aktualizuj(self, inny_klawisz, id_kombinacji, długość_kombinacji):
-        self.kombinacja.add(id_kombinacji)
+    def aktualizuj(self, kombinacja):
+        self.kombinacje[kombinacja.id_kombinacji] += 1
         samodzielny = 0
-        if długość_kombinacji == 1:
+        if kombinacja.długość_kombinacji == 1:
             samodzielny = 1
         self.samodzielny += samodzielny
-        if inny_klawisz.początkowy:
+        if kombinacja.początkowa:
             self.początkowy = True
-        if inny_klawisz.końcowy:
+        if kombinacja.końcowa:
             self.końcowy = True
-        self.waga += inny_klawisz.waga
+        self.waga += kombinacja.waga
+
+    def aktywuj(self, kombinacja):
+        id_komb = kombinacja.id_kombinacji
+        self.kombinacje[id_komb] += 1
+        samodzielny = 0
+        if kombinacja.długość_kombinacji == 1:
+            samodzielny = 1
+        self.samodzielny += samodzielny
+        if kombinacja.początkowa:
+            self.początkowy = True
+        if kombinacja.końcowa:
+            self.końcowy = True
+        self.waga += kombinacja.waga
+
+    def deaktywuj(self, kombinacja):
+        id_komb = kombinacja.id_kombinacji
+        if self.kombinacje[id_komb] <= 0:
+            self.log.error(f"Nie mogę deaktywować kombinacji {id_komb} dla {self.znak}(k: {self.kombinacje})")
+            return
+        else:
+            self.kombinacje[id_komb] -= 1
+        samodzielny = 0
+        if kombinacja.długość_kombinacji == 1:
+            samodzielny = -1
+        self.samodzielny += samodzielny
+        if kombinacja.początkowa:
+            self.początkowy = False
+        if kombinacja.końcowa:
+            self.końcowy = False
+        self.waga -= kombinacja.waga
 
     def musi_zostać(self):
         return self.początkowy or self.końcowy
-
-class Kciuki:
-    def __init__(self, log, konfiguracja):
-        self.log = log
-        self.konfiguracja = konfiguracja
-        klawisz_jot = Klawisz(jot, None)
-        klawisz_ee = Klawisz(ee, None)
-        klawisz_ii = Klawisz(ii, None)
-        klawisz_aa = Klawisz(aa, None)
-        klawisz_uu = Klawisz(uu, None)
-        self.kciuk_lewy = Palec(log, [klawisz_jot, klawisz_ee, klawisz_ii])
-        self.kciuk_prawy = Palec(log, [klawisz_ii, klawisz_aa, klawisz_uu])
-        self.kombinacje = []  # Można tylko dodawać elementy do kombinacji, żeby IDki się zgadzały!!!
-
-    def zresetuj_klawisze(self):
-        for palec in [self.kciuk_lewy,
-                      self.kciuk_prawy]:
-            for klawisz in palec.klawisze.values():
-                klawisz.zresetuj()
-
-    def waga(self):
-        waga = 0
-        for palec in [self.palec_mały, self.palec_serdeczny, self.palec_środkowy,
-                      self.palec_wskazujący, self.kciuk_lewy]:
-            waga += palec.waga()
-        return waga
-
-    def palec_dla_indeksu(self, indeks):
-        if indeks in [0, 1]:
-            return self.palec_mały
-        elif indeks == 2:
-            return self.palec_serdeczny
-        elif indeks == 3:
-            return self.palec_środkowy
-        elif indeks in [4, 5]:
-            return self.palec_wskazujący
-        elif indeks == 6:
-            return self.kciuk_lewy
-        else:
-            self.log.error(f"Lewa ręka nie ma palca dla indeksu: {indeks}")
-
-    def zbuduj_kombinację(self, znaki, pierwsza=False, ostatnia=False):
-        id_kombinacji = self.dostępne_id_kombinacji
-        self.dostępne_id_kombinacji += 1
-        kombinacja = Kombinacja(self.konfiguracja,
-                                id_kombinacji,
-                                znaki,
-                                prawa=False,
-                                pierwsza_kombinacja=pierwsza,
-                                ostatnia_kombinacja=ostatnia)
-        self.dodaj_kombinację(kombinacja)
-
-    def dodaj_kombinację(self, kombinacja):
-        self.kombinacje.append(kombinacja)
-        for klawisz in kombinacja.zwróć_klawisze():
-            palec = self.palec_dla_indeksu(klawisz.indeks)
-            if klawisz.znak not in palec.wspierane_kombinacje:
-                self.log.error(f"Nie mogę dodać klawisza {klawisz.znak} {klawisz.indeks}")
-            else:
-                palec.dodaj_klawisz(klawisz, kombinacja.id_kombinacji, kombinacja.długość_kombinacji)
-
-    def akordy_kciukowe(self):
-        tekst = self.palec_mały.tekst()
-        tekst += self.palec_serdeczny.tekst()
-        tekst += self.palec_środkowy.tekst()
-        tekst += self.palec_wskazujący.tekst()
-        tekst += self.kciuk_lewy.tekst()
-        dodanie_tyldy = self.palec_wskazujący.dodanie_tyldy_możliwe()
-        dodanie_gwiazdki = self.palec_wskazujący.dodanie_gwiazdki_możliwe()
-        dodanie_tyldogwiazdki = self.palec_wskazujący.dodanie_tyldy_i_gwiazdki_możliwe()
-        return (tekst, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
 
 
 class RękaLewa:
     def __init__(self, log, konfiguracja):
         self.log = log
-        self.konfiguracja = konfiguracja
-        self.palec_mały = Palec(log, ["X", "F", "Z", "S"])
-        self.palec_serdeczny = Palec(log, ["K", "T"])
-        self.palec_środkowy = Palec(log, ["P", "V"])
-        self.palec_wskazujący = Palec(log, ["L", "R", "~", "*"])
-        self.kciuk_lewy = Palec(log, ["J", "E"])  # tutaj do logiki ważne jest tylko "J"
-        self.kombinacje = []  # Można tylko dodawać elementy do kombinacji, żeby IDki się zgadzały!!!
-        self.dostępne_id_kombinacji = 0
+        self.indeksy = konfiguracja.lewe_indeksy_klawiszy
+        self.palec_mały = Palec(log, konfiguracja.palce_lewe[0])
+        self.palec_serdeczny = Palec(log, konfiguracja.palce_lewe[1])
+        self.palec_środkowy = Palec(log, konfiguracja.palce_lewe[2])
+        self.palec_wskazujący = Palec(log, konfiguracja.palce_lewe[3])
+        self.kciuk_lewy = Palec(log, konfiguracja.palce_lewe[4])#  Palec(log, ["J", "E"])  # tutaj do logiki ważne jest tylko "J"
+        self.kombinacje = {}  # Można tylko dodawać elementy do kombinacji, żeby IDki się zgadzały!!!
 
-    def zresetuj_klawisze(self):
-        self.dostępne_id_kombinacji = 0
+    def zresetuj_rękę(self):
+        self.kombinacje = {}
         for palec in [self.palec_mały,
                       self.palec_serdeczny,
                       self.palec_środkowy,
@@ -522,7 +543,9 @@ class RękaLewa:
         waga = 0
         for palec in [self.palec_mały, self.palec_serdeczny, self.palec_środkowy,
                       self.palec_wskazujący, self.kciuk_lewy]:
+            # self.log.info(f"Lewy Palec: {palec.waga()}")
             waga += palec.waga()
+        
         return waga
 
     def palec_dla_indeksu(self, indeks):
@@ -539,25 +562,60 @@ class RękaLewa:
         else:
             self.log.error(f"Lewa ręka nie ma palca dla indeksu: {indeks}")
 
-    def zbuduj_kombinację(self, znaki, pierwsza=False, ostatnia=False):
-        id_kombinacji = self.dostępne_id_kombinacji
-        self.dostępne_id_kombinacji += 1
-        kombinacja = Kombinacja(self.konfiguracja,
+    def zbuduj_kombinację(self, id_kombinacji, znaki, pierwsza=False, ostatnia=False):
+        kombinacja = Kombinacja(self.log,
+                                self.indeksy,
                                 id_kombinacji,
                                 znaki,
-                                prawa=False,
+                                waga=1,
                                 pierwsza_kombinacja=pierwsza,
                                 ostatnia_kombinacja=ostatnia)
         self.dodaj_kombinację(kombinacja)
+        return kombinacja
 
     def dodaj_kombinację(self, kombinacja):
-        self.kombinacje.append(kombinacja)
+        self.kombinacje[kombinacja.id_kombinacji] = True  # Czy jest aktywna
         for klawisz in kombinacja.zwróć_klawisze():
             palec = self.palec_dla_indeksu(klawisz.indeks)
             if klawisz.znak not in palec.wspierane_kombinacje:
                 self.log.error(f"Nie mogę dodać klawisza {klawisz.znak} {klawisz.indeks}")
             else:
-                palec.dodaj_klawisz(klawisz, kombinacja.id_kombinacji, kombinacja.długość_kombinacji)
+                # self.log.info(f"Dodaje {klawisz.znak} dla {kombinacja.id_kombinacji}")
+                palec.dodaj_klawisz(klawisz, kombinacja)
+
+    def aktywuj_kombinację(self, kombinacja):
+        id_komb = kombinacja.id_kombinacji
+        if id_komb not in self.kombinacje.keys():
+            self.log.error(f"RękaLewa nie ma kombinacji: {id_komb}")
+            return
+        elif self.kombinacje[id_komb]:
+            self.log.error(f"RękaLewa komb. {id_komb} już aktywna.")
+            return
+        self.kombinacje[id_komb] = True
+
+        for klawisz in kombinacja.zwróć_klawisze():
+            palec = self.palec_dla_indeksu(klawisz.indeks)
+            if klawisz.znak not in palec.wspierane_kombinacje:
+                self.log.error(f"Nie mogę dodać klawisza {klawisz.znak} {klawisz.indeks}")
+            else:
+                palec.aktywuj_klawisz(klawisz, kombinacja)       
+        
+    def deaktywuj_kombinację(self, kombinacja):
+        id_komb = kombinacja.id_kombinacji
+        if id_komb not in self.kombinacje.keys():
+            self.log.error(f"RękaLewa nie ma kombinacji: {id_komb}")
+            return
+        elif not self.kombinacje[id_komb]:
+            self.log.error(f"RękaLewa komb. {id_komb} już nieaktywna.")
+            return
+        self.kombinacje[id_komb] = False
+
+        for klawisz in kombinacja.zwróć_klawisze():
+            palec = self.palec_dla_indeksu(klawisz.indeks)
+            if klawisz.znak not in palec.wspierane_kombinacje:
+                self.log.error(f"Nie mogę deaktywować klawisza {klawisz.znak} dla {palec.wspierane_kombinacje}")
+            else:
+                palec.deaktywuj_klawisz(klawisz, kombinacja)
 
     def akord_lewy(self):
         tekst = self.palec_mały.tekst()
@@ -574,15 +632,16 @@ class RękaLewa:
 class RękaPrawa:
     def __init__(self, log, konfiguracja):
         self.log = log
-        self.konfiguracja = konfiguracja
-        self.palec_wskazujący = Palec(log, ["~", "*", "C", "R"])
-        self.palec_środkowy = Palec(log, ["L", "B"])
-        self.palec_serdeczny = Palec(log, ["S", "G"])
-        self.palec_mały = Palec(log, ["T", "W", "O", "Y"])
-        self.kombinacje = []  # Można tylko dodawać elementy do kombinacji, żeby IDki się zgadzały!!!
+        self.indeksy = konfiguracja.prawe_indeksy_klawiszy
+        self.palec_wskazujący = Palec(log, konfiguracja.palce_prawe[0]) #Palec(log, ["~", "*", "C", "R"])
+        self.palec_środkowy = Palec(log, konfiguracja.palce_prawe[1]) # Palec(log, ["L", "B"])
+        self.palec_serdeczny = Palec(log, konfiguracja.palce_prawe[2]) # Palec(log, ["S", "G"])
+        self.palec_mały = Palec(log, konfiguracja.palce_prawe[3]) # Palec(log, ["T", "W", "O", "Y"])
+        self.kombinacje = {}  # Można tylko dodawać elementy do kombinacji, żeby IDki się zgadzały!!!
         self.dostępne_id_kombinacji = 0
 
-    def zresetuj_klawisze(self):
+    def zresetuj_rękę(self):
+        self.kombinacje = {}
         self.dostępne_id_kombinacji = 0
         for palec in [self.palec_mały,
                       self.palec_serdeczny,
@@ -595,6 +654,7 @@ class RękaPrawa:
         waga = 0
         for palec in [self.palec_mały, self.palec_serdeczny, self.palec_środkowy,
                       self.palec_wskazujący]:
+            # self.log.info(f"Prawy palec: {palec.waga()}")
             waga += palec.waga()
         return waga
 
@@ -610,25 +670,60 @@ class RękaPrawa:
         else:
             self.log.error(f"Prawa ręka nie ma palca dla indeksu: {indeks}")
 
-    def zbuduj_kombinację(self, znaki, pierwsza=False, ostatnia=False):
-        id_kombinacji = self.dostępne_id_kombinacji
-        self.dostępne_id_kombinacji += 1
-        kombinacja = Kombinacja(self.konfiguracja,
+    def zbuduj_kombinację(self, id_kombinacji, znaki, pierwsza=False, ostatnia=False):
+        kombinacja = Kombinacja(self.log,
+                                self.indeksy,
                                 id_kombinacji,
                                 znaki,
-                                prawa=True,
+                                waga=1,
                                 pierwsza_kombinacja=pierwsza,
                                 ostatnia_kombinacja=ostatnia)
         self.dodaj_kombinację(kombinacja)
+        return kombinacja
 
     def dodaj_kombinację(self, kombinacja):
-        self.kombinacje.append(kombinacja)
+        self.kombinacje[kombinacja.id_kombinacji] = True  # Czy jest aktywna
         for klawisz in kombinacja.zwróć_klawisze():
             palec = self.palec_dla_indeksu(klawisz.indeks)
             if klawisz.znak not in palec.wspierane_kombinacje:
                 self.log.error(f"Nie mogę dodać klawisza {klawisz.znak} {klawisz.indeks}")
             else:
-                palec.dodaj_klawisz(klawisz, kombinacja.id_kombinacji, kombinacja.długość_kombinacji)
+                # self.log.info(f"Dodaje {klawisz.znak} dla {kombinacja.id_kombinacji}")
+                palec.dodaj_klawisz(klawisz, kombinacja)
+
+    def aktywuj_kombinację(self, kombinacja):
+        id_komb = kombinacja.id_kombinacji
+        if id_komb not in self.kombinacje.keys():
+            self.log.error(f"RękaPrawa nie ma kombinacji: {id_komb}")
+            return
+        elif self.kombinacje[id_komb]:
+            self.log.error(f"RękaPrawa komb. {id_komb} już aktywna.")
+            return
+        self.kombinacje[id_komb] = True
+            
+        for klawisz in kombinacja.zwróć_klawisze():
+            palec = self.palec_dla_indeksu(klawisz.indeks)
+            if klawisz.znak not in palec.wspierane_kombinacje:
+                self.log.error(f"Nie mogę dodać klawisza {klawisz.znak} {klawisz.indeks}")
+            else:
+                palec.aktywuj_klawisz(klawisz, kombinacja)       
+        
+    def deaktywuj_kombinację(self, kombinacja):
+        id_komb = kombinacja.id_kombinacji
+        if id_komb not in self.kombinacje.keys():
+            self.log.error(f"RękaPrawa nie ma kombinacji: {id_komb}")
+            return
+        elif not self.kombinacje[id_komb]:
+            self.log.error(f"RękaPrawa komb. {id_komb} już nieaktywna.")
+            return
+        self.kombinacje[id_komb] = False
+
+        for klawisz in kombinacja.zwróć_klawisze():
+            palec = self.palec_dla_indeksu(klawisz.indeks)
+            if klawisz.znak not in palec.wspierane_kombinacje:
+                self.log.error(f"Nie mogę deaktywować klawisza {klawisz.znak} dla {palec.wspierane_kombinacje}")
+            else:
+                palec.deaktywuj_klawisz(klawisz, kombinacja)
 
     def akord_prawy(self):
         tekst = self.palec_wskazujący.tekst()
@@ -664,13 +759,27 @@ class Palec:
         self.obsługiwane_klawisze = obsługiwane_klawisze
         self.klawisze = {}
 
-    def dodaj_klawisz(self, klawisz, id_kombinacji, długość_kombinacji):
+    def dodaj_klawisz(self, klawisz, kombinacja):
         if klawisz.znak not in self.obsługiwane_klawisze:
             self.log.error(f"{klawisz.znak} nieobsługiwany ({self.obsługiwane_klawisze})")
         elif klawisz.znak not in self.klawisze.keys():
             self.klawisze[klawisz.znak] = klawisz
         else:
-            self.klawisze[klawisz.znak].aktualizuj(klawisz, id_kombinacji, długość_kombinacji)
+            self.klawisze[klawisz.znak].aktualizuj(kombinacja)
+
+    def aktywuj_klawisz(self, klawisz, kombinacja):
+        if klawisz.znak not in self.obsługiwane_klawisze:
+            self.log.error(f"{klawisz.znak} nieobsługiwany ({self.obsługiwane_klawisze}) A")
+        elif klawisz.znak not in self.klawisze.keys():
+            self.log.error(f"{klawisz.znak} niedodany, nie mogę aktywować")
+        self.klawisze[klawisz.znak].aktywuj(kombinacja)
+
+    def deaktywuj_klawisz(self, klawisz, kombinacja):
+        if klawisz.znak not in self.obsługiwane_klawisze:
+            self.log.error(f"{klawisz.znak} nieobsługiwany ({self.obsługiwane_klawisze}) D")
+        elif klawisz.znak not in self.klawisze.keys():
+            self.log.error(f"{klawisz.znak} niedodany, nie mogę deaktywować")
+        self.klawisze[klawisz.znak].deaktywuj(kombinacja)
 
     def pierwszy_lub_ostatni_klawisz(self):
         for klawisz in self.klawisze.values():
@@ -701,31 +810,6 @@ class Palec:
             return tekst  # To się nie powinno zdarzyć
         else:
             return tekst.replace(klawisz_do_deaktywacji.znak, nic)
-
-        # ile_klawiszy_użytych = len(self.klawisze)
-        # if ile_klawiszy_użytych == 3:
-        #     # Musimy coś wywalić, pierwszy i ostatni musi zostać
-        #     musi_zostać = self.pierwszy_lub_ostatni_klawisz()
-        #     if not musi_zostać:
-        #         usuwany_klawisz = Klawisz('', -1, -1, 100)
-        #         for klawisz in self.klawisze.values():
-        #             if klawisz.waga < usuwany_klawisz.waga\
-        #               and self.można_deaktywować(klawisz):
-        #                 usuwany_klawisz = klawisz
-        #         self.klawisze.pop(usuwany_klawisz.znak)
-        #     else:
-        #         for klawisz in self.klawisze.values():
-        #             if klawisz.znak == musi_zostać:
-        #                 continue
-        #             if musi_zostać+klawisz.znak in self.wspierane_kombinacje:
-        #                 return musi_zostać+klawisz.znak
-        #             elif klawisz.znak+musi_zostać in self.wspierane_kombinacje:
-        #                 return klawisz.znak+musi_zostać
-        #         self.log.error(f"Nie znalazłem prawidłowej kombinacji dla {self.klawisze.keys()}")
-        # for klawisz in self.obsługiwane_klawisze:
-        #     if klawisz in self.klawisze.keys():
-        #         tekst += klawisz
-        # return tekst
 
     def można_deaktywować(self, usuwany_klawisz):
         tekst = ""
@@ -795,25 +879,30 @@ class Palec:
 
 class Kombinacja:
     def __init__(self,
-                 konfiguracja,
+                 log,
+                 indeksy,
                  id_kombinacji,
                  znaki,
                  waga=1,
-                 prawa=False,
                  pierwsza_kombinacja=False,
                  ostatnia_kombinacja=False):
-        self.indeksy = konfiguracja.lewe_indeksy_klawiszy
-        if prawa:
-            self.indeksy = konfiguracja.prawe_indeksy_klawiszy
+        self.log = log
+        self.minimalny_indeks = 10
         self.id_kombinacji = id_kombinacji
         self.klawisze = dict()
+        self.waga = waga
         self.długość_kombinacji = len(znaki)
+        self.początkowa = pierwsza_kombinacja
+        self.końcowa = ostatnia_kombinacja
         for znak in znaki:
-            indeks = self.indeksy[znak]
+            indeks = indeksy[znak]
+            if indeks < self.minimalny_indeks:
+                self.minimalny_indeks = indeks
             samodzielny = 0
             if self.długość_kombinacji == 1:
                 samodzielny = 1
-            self.klawisze[znak] = Klawisz(znak,
+            self.klawisze[znak] = Klawisz(log,
+                                          znak,
                                           indeks,
                                           id_kombinacji,
                                           waga,
@@ -823,5 +912,8 @@ class Kombinacja:
     def zwróć_klawisze(self):
         for klawisz in self.klawisze.values():
             yield klawisz
+
+    def __repr__(self):
+        return f"{self.id_kombinacji}: {self.klawisze.keys()}"
             
 

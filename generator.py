@@ -1,4 +1,5 @@
 from klawiatura import Klawiatura, RękaLewa, RękaPrawa
+from collections import defaultdict
 
 tylda = "~"
 gwiazdka = "*"
@@ -13,9 +14,10 @@ tyldogwiazdka = "~*"
 
 
 class Generator():
-    def __init__(self, log, klawiatura, konfiguracja, słownik_ostateczny, sylaby_słowa):
+    def __init__(self, log, język, klawiatura, konfiguracja, słownik_ostateczny, sylaby_słowa):
         self.log = log
         self.konfiguracja = konfiguracja
+        self.język = język
         self.klawiatura = klawiatura
         # {tekst: {"Kombinacja": niedopasowanie}}
         # self.język = język
@@ -29,6 +31,7 @@ class Generator():
         self.postęp = 0
         self.minimum_kombinacji_per_słowo = 2
         self.niepowodzenia = []
+        self.analizowane_fonemy = defaultdict(lambda: 0)
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info("Inicjalizuję bazę generatora")
@@ -79,7 +82,7 @@ class Generator():
                         kombinacje_dodane.append(kombinacja)
         return kombinacje_dodane
                 
-    def wygeneruj_akordy(self, słowo, limit_prób=2):
+    def wygeneruj_akordy(self, słowo, limit_niedopasowania, limit_prób=2):
         self.postęp += 1
 
         # Dla 'w', 'z'
@@ -90,12 +93,18 @@ class Generator():
                 sylaby = [słowo]
             else:
                 raise KeyError(f"Nie znam sylab, {e}")
-        kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_prób)
+        self.log.info(f"Szukam dla: {słowo}")
+        kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_niedopasowania, limit_prób)
+        self.log.info(f"Dostałem kombinacje: {kombinacje}")
         dodane = []
         if kombinacje:
             dodane = self._dopasuj_kombinacje(słowo, kombinacje)
         else:
             self.log.debug(f"Nie znalazłem kombinacji dla: {słowo}")
+        if not dodane:
+            kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_niedopasowania, limit_prób, bez_środka=True)
+            if kombinacje:
+                dodane = self._dopasuj_kombinacje(słowo, kombinacje)
         nowe_kombinacje = []
         if len(dodane) == 0 and kombinacje:
             # if słowo == "nać":
@@ -103,13 +112,15 @@ class Generator():
             #  Możemy pokombinować z gwiazdkami
             #  Na razie logika minimalistyczna
             for kombinacja in kombinacje:
-                nowe_podkombinacje = self.klawiatura.dodaj_znaki_specjalne_do_kombinacji(kombinacja)
-                nowe_kombinacje += nowe_podkombinacje
-                # if len(dodane) > 0:
-                #     break
+                if kombinacja[1] < limit_niedopasowania:
+                    self.log.info(f"Dodaję po specjalne: {kombinacja}")
+                    nowe_podkombinacje = self.klawiatura.dodaj_znaki_specjalne_do_kombinacji(kombinacja)
+                    nowe_kombinacje += nowe_podkombinacje
+                    # if len(dodane) > 0:
+                    #     break
             if nowe_kombinacje:
                 # if słowo == "nać":
-                #     self.log.info(f"nowe dla nać: {nowe_podkombinacje}")
+                self.log.info(f"nowe propozycje z ~*: {nowe_kombinacje}")
                 dodane += self._dopasuj_kombinacje(słowo, nowe_kombinacje)
         if self.postęp % self.loguj_postęp_co == 0:
             self.log.info(f"{self.postęp}: {słowo} - wygenerowano")
@@ -127,4 +138,15 @@ class Generator():
 
             yield f'"{kombinacja}": "{tekst}"'
 
-
+    def analizuj_słowo(self, słowo, częstotliwość):
+        try:
+            sylaby = self.sylaby_słowa[słowo]
+        except KeyError as e:
+            if len(słowo) == 1:
+                sylaby = [słowo]
+            else:
+                raise KeyError(f"Nie znam sylab, {e}")
+        for sylaba in sylaby:
+            (nagłos, _śródgłos, wygłos) = self.język.fonemy_sylaby[sylaba]
+            for fonem in nagłos + wygłos:
+                self.analizowane_fonemy[fonem] += częstotliwość
