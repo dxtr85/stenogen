@@ -34,12 +34,12 @@ class Klawiatura:
                 break
             limit_prób -= 1
             
-            self.log.debug(f"Dzielę {słowo} w {gdzie_podzielić}, limit: {limit_prób}")
+            # self.log.debug(f"Dzielę {słowo} w {gdzie_podzielić}, limit: {limit_prób}")
             (id_środkowej_kombinacji,
              kombinacja_środkowa,
              waga_środka,
              waga_słowa) = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić)
-            self.log.debug(f"Waga słowa: {waga_słowa}")
+            # self.log.debug(f"Waga słowa: {waga_słowa}")
             if bez_środka:
                 kombinacja_środkowa = ""
                 waga_środka = 0
@@ -51,14 +51,14 @@ class Klawiatura:
                                             kombinacja_środkowa,
                                             kombinacje_do_odjęcia_prawe)
             niedopasowanie = waga_słowa - waga_środka - waga_akordu
-            self.log.debug(f"Niedopasowanie: {niedopasowanie}")
+            # self.log.debug(f"Niedopasowanie: {niedopasowanie}")
             if niedopasowanie < 0:
                 self.log.error(f"Niedopasowanie dla {słowo}: {niedopasowanie}")
                 self.log.error(f"  waga słowa {waga_słowa}, waga środka: {waga_środka}")
                 self.log.error(f"  waga akordu {waga_akordu}")
             elif niedopasowanie <= limit_niedopasowania:
                 akordy.append((akord, niedopasowanie))
-            self.log.debug(f"Bez inv: {akordy}")
+            # self.log.debug(f"Bez inv: {akordy}")
             if limit_prób > 0:
                 akordy += self.akordy_z_inwersją(kombinacje_do_odjęcia_lewe,
                                                 kombinacja_środkowa,
@@ -67,7 +67,7 @@ class Klawiatura:
                                                 waga_środka,
                                                 limit_niedopasowania,
                                                 limit_prób)
-            self.log.debug(f"Z inv: {akordy}")
+            # self.log.debug(f"Z inv: {akordy}")
             self.zresetuj_klawiaturę()
         return akordy
 
@@ -101,7 +101,7 @@ class Klawiatura:
     def akordy_z_inwersją(self, od_lewe, środek, od_prawe,
                           waga_słowa, waga_środka,
                           limit_niedopasowania, limit_prób):
-        self.log.debug(f"z inw, limit: {limit_prób}")
+        # self.log.debug(f"z inw, limit: {limit_prób}")
         dł_lewe = len(od_lewe)
         dł_prawe = len(od_prawe)
         akordy = []
@@ -114,7 +114,7 @@ class Klawiatura:
         while limit_prób > 0:
             komb_lewe = []
             komb_prawe = []
-            self.log.debug(f"z inw w pętli, limit: {limit_prób}")
+            # self.log.debug(f"z inw w pętli, limit: {limit_prób}")
             if not wszystkie_lewe_odjęte:
                 for id in od_prawe:
                     if id > max_idx:
@@ -139,9 +139,9 @@ class Klawiatura:
                     akord = self.połącz_kombinacje(środek)
                     waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
                     niedopasowanie = waga_słowa - waga_środka - waga_akordu
-                    self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {niedopasowanie}(waga ako: {waga_akordu})")
+                    # self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {niedopasowanie}(waga ako: {waga_akordu})")
                     if niedopasowanie <= limit_niedopasowania:
-                        self.log.debug(f"Dodaję: {akord}")
+                        # self.log.debug(f"Dodaję: {akord}")
                         akordy.append((akord, niedopasowanie))
                     # self.log.debug(f"KoMb do aktywacji: {komb_lewe}")
                     for komb in komb_lewe:
@@ -202,7 +202,7 @@ class Klawiatura:
         sylaba_środkowa,
         sylaby_prawe) = self.podziel_sylaby_na_strony(sylaby,
                                                       gdzie_podzielić)
-        self.log.info(f"Podzielone: {sylaby_lewe} {sylaba_środkowa} {sylaby_prawe}")
+        # self.log.info(f"Podzielone: {sylaby_lewe} {sylaba_środkowa} {sylaby_prawe}")
         kombinacje_lewe = []
         kombinacja_środkowa = ""
         kombinacje_prawe = []
@@ -214,9 +214,9 @@ class Klawiatura:
          waga_środka) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
                                                     sylaba_środkowa,
                                                     sylaby_prawe)
-        dbg = [["kie", "dy"]]
+        dbg = []#[["kie", "dy"]]
         if sylaby in dbg:
-            self.log.info(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
+            self.log.debug(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
         pierwsza = True
         ostatnia = False
         długość_lewych = len(fonemy_lewe_orig)
@@ -226,7 +226,7 @@ class Klawiatura:
             #     ostatnia = True
             znaki = self.klawisze_dla_fonemu(fonem)
             if sylaby in dbg:
-                self.log.info(f"{sylaby} lewe: {znaki} id: {dostępne_id_kombinacji}")
+                self.log.debug(f"{sylaby} lewe: {znaki} id: {dostępne_id_kombinacji}")
             kombinacja = self.ręka_lewa.zbuduj_kombinację(dostępne_id_kombinacji,
                                                             znaki,
                                                             pierwsza,
@@ -235,7 +235,7 @@ class Klawiatura:
             kombinacje_lewe.append(kombinacja)
             dostępne_id_kombinacji += 1
             if sylaby in dbg and kombinacja:
-                self.log.info(f"{sylaby}: klaw L: {kombinacja.klawisze.keys()}")
+                self.log.debug(f"{sylaby}: klaw L: {kombinacja.klawisze.keys()}")
 
         id_środkowej_kombinacji = len(kombinacje_lewe) - 1  # Workaround na pusty środek
         for fonem in śródgłos_orig:
@@ -246,7 +246,7 @@ class Klawiatura:
             id_środkowej_kombinacji = dostępne_id_kombinacji
             dostępne_id_kombinacji += 1
         if sylaby in dbg:
-            self.log.info(f"{sylaby}: środek: {kombinacja_środkowa}")
+            self.log.debug(f"{sylaby}: środek: {kombinacja_środkowa}")
         # pierwsza = True
         ostatnia = False
         długość_prawych = len(fonemy_prawe_orig)
@@ -256,7 +256,7 @@ class Klawiatura:
                 ostatnia = True
             znaki = self.klawisze_dla_fonemu(fonem, prawe=True)
             if sylaby in dbg:
-                self.log.info(f"{sylaby} prawe: {znaki} id: {dostępne_id_kombinacji}(ost: {ostatnia})")
+                self.log.debug(f"{sylaby} prawe: {znaki} id: {dostępne_id_kombinacji}(ost: {ostatnia})")
             kombinacja = self.ręka_prawa.zbuduj_kombinację(dostępne_id_kombinacji,
                                                            znaki,
                                                            pierwsza,
@@ -265,10 +265,10 @@ class Klawiatura:
             kombinacje_prawe.append(kombinacja)
             dostępne_id_kombinacji += 1
             if sylaby in dbg and kombinacja:
-                self.log.info(f"{sylaby}: klaw P: {kombinacja.klawisze.keys()}")
+                self.log.debug(f"{sylaby}: klaw P: {kombinacja.klawisze.keys()}")
         self.kombinacje = kombinacje_lewe + [kombinacja_środkowa] + kombinacje_prawe
         if sylaby in dbg and kombinacja:
-                self.log.info(f"{sylaby}: kombinacje: {kombinacje_lewe} {kombinacja_środkowa} {kombinacje_prawe}")
+                self.log.debug(f"{sylaby}: kombinacje: {kombinacje_lewe} {kombinacja_środkowa} {kombinacje_prawe}")
         self.minimalne_indeksy_lewe = self.minimalne_indeksy_kombinacji(kombinacje_lewe)
         self.minimalne_indeksy_prawe = self.minimalne_indeksy_kombinacji(kombinacje_prawe)
         return (id_środkowej_kombinacji, kombinacja_środkowa, waga_środka, waga_słowa)

@@ -93,9 +93,9 @@ class Generator():
                 sylaby = [słowo]
             else:
                 raise KeyError(f"Nie znam sylab, {e}")
-        self.log.info(f"Szukam dla: {słowo}")
+        # self.log.info(f"Szukam dla: {słowo}")
         kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_niedopasowania, limit_prób)
-        self.log.info(f"Dostałem kombinacje: {kombinacje}")
+        # self.log.info(f"Dostałem kombinacje: {kombinacje}")
         dodane = []
         if kombinacje:
             dodane = self._dopasuj_kombinacje(słowo, kombinacje)

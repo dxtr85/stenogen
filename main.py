@@ -15,7 +15,7 @@ def main():
         formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--log', default='wyniki/generuj_slownik.log',
                         help='log przebiegu generacji słownika')
-    parser.add_argument('--frekwencja', default='data/frekwencja_Kazojc.csvm',
+    parser.add_argument('--frekwencja', default='data/frekwencja_Kazojc.csv',
                         help='dane frekwencyjne (w formacie linii csv: "słowo",częstość)')
     parser.add_argument('--slowa', default='data/slownik',
                         help='słowa do utworzenia słownika podzielone na sy=la=by')
@@ -79,6 +79,7 @@ def main():
     #     log.info(f"{i:2}: {ki:5}|{wi:10}")
     #     i += 1
 
+
     # Na czas developmentu wyłączone
     # log.info("Dodaję słowa bez podanej częstotliwości")
     # istniejące_słowa = słownik.keys()
@@ -91,8 +92,9 @@ def main():
     #         niepowodzenia.append((słowo, frekwencja))
     #     numer_generacji += 1
 
-    # log.info(f"Dodano {len(słownik) - linie_bazy} słów w {time.time() - czas_start} sekund.")
-    # log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia)} słów.")
+
+    log.info(f"Dodano {len(słownik) - linie_bazy} słów w {time.time() - czas_start} sekund.")
+    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia)} słów.")
 
     log.info("Słownik utworzony, zapisuję...")
     pisarz = Pisarz(args.slownik)
