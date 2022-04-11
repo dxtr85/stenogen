@@ -75,27 +75,29 @@ class Klawiatura:
         komb_lewe = []
         komb_prawe = []
         max_idx = len(self.kombinacje) - 1
-        for id_kombinacji in od_lewe:
-            if id_kombinacji > max_idx:
-                self.log.error(f"Index za duży: {id_kombinacji}, dostępne komb: {self.kombinacje}")
+        for idx_kombinacji in od_lewe:
+            if idx_kombinacji > max_idx:
+                self.log.error(f"BIL Idx za duży: {idx_kombinacji}, dostępne komb: {self.kombinacje}")
                 continue
-            lewa_do_odj = self.kombinacje[id_kombinacji]
+            lewa_do_odj = self.kombinacje[idx_kombinacji]
             self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
-            komb_lewe.append(lewa_do_odj)
-        for id_kombinacji in od_prawe:
-            if id_kombinacji > max_idx:
-                self.log.error(f"Index za duży: {id_kombinacji}, dostępne komb: {self.kombinacje}")
+            komb_lewe.append(idx_kombinacji)
+        for idx_kombinacji in od_prawe:
+            if idx_kombinacji > max_idx:
+                self.log.error(f"BIP Idx za duży: {idx_kombinacji}, dostępne komb: {self.kombinacje}")
                 continue
-            prawa_do_odj = self.kombinacje[id_kombinacji]
+            prawa_do_odj = self.kombinacje[idx_kombinacji]
             self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
-            komb_prawe.append(prawa_do_odj)
+            komb_prawe.append(idx_kombinacji)
         akord = self.połącz_kombinacje(środek)
         waga = self.waga_na_klawiaturze()
         # self.log.debug(f"Ko0 do aktywacji: {komb_lewe}")
-        for kombo in komb_lewe:
-            self.ręka_lewa.aktywuj_kombinację(kombo)
-        for kombo in komb_prawe:
-            self.ręka_prawa.aktywuj_kombinację(kombo)
+        for idx_kombinacji in komb_lewe:
+            lewa_do_dod = self.kombinacje[idx_kombinacji]
+            self.ręka_lewa.aktywuj_kombinację(lewa_do_dod)
+        for idx_kombinacji in komb_prawe:
+            prawa_do_dod = self.kombinacje[idx_kombinacji]
+            self.ręka_prawa.aktywuj_kombinację(prawa_do_dod)
         return (akord, waga)
 
     def akordy_z_inwersją(self, od_lewe, środek, od_prawe,
@@ -116,14 +118,17 @@ class Klawiatura:
             komb_prawe = []
             # self.log.debug(f"z inw w pętli, limit: {limit_prób}")
             if not wszystkie_lewe_odjęte:
+                # Odejmujemy wszystkie prawe aby prawa strona była niemalejąca
                 for id in od_prawe:
                     if id > max_idx:
-                        self.log.error(f"Index za duży: {id}, dostępne: {self.kombinacje}")
+                        self.log.error(f"ZIP Idx za duży: {id} (w {od_prawe}), dostępne: [0..{max_idx}]")
+                        self.log.debug(f"Kombos: {self.kombinacje}")
                         continue
 
                     prawa_do_odj = self.kombinacje[id]
                     self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
                     komb_prawe.append(prawa_do_odj)
+                # A z lewej strony zostawiamy jedną malejącą kombinację, aby skorzystać z inwersji
                 if następny_do_pominięcia_lewy >= dł_lewe:
                     wszystkie_lewe_odjęte = True
                 else:
@@ -131,7 +136,7 @@ class Klawiatura:
                         if idx == następny_do_pominięcia_lewy:
                             continue
                         elif od_lewe[idx] > max_idx:
-                            self.log.error(f"Idx za duży: {od_lewe[idx]}, dostępne: {self.kombinacje}")
+                            self.log.error(f"ZIL Idx za duży: {od_lewe[idx]} (w {od_lewe}), dostępne: {self.kombinacje}")
                             continue
                         lewa_do_odj = self.kombinacje[od_lewe[idx]]
                         self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
@@ -144,24 +149,29 @@ class Klawiatura:
                         # self.log.debug(f"Dodaję: {akord}")
                         akordy.append((akord, niedopasowanie))
                     # self.log.debug(f"KoMb do aktywacji: {komb_lewe}")
+                    # Aktywujemy spowrotem kombinacje lewe
                     for komb in komb_lewe:
                         self.ręka_lewa.aktywuj_kombinację(komb)
                     następny_do_pominięcia_lewy += 1
                     limit_prób -= 1
+                # Aktywujemy spowrotem kombinacje prawe
                 for kombo in komb_prawe:
                     self.ręka_prawa.aktywuj_kombinację(kombo)
                 if limit_prób <= 0:
                     break
 
             elif not wszystkie_prawe_odjęte:
+                # A tu na odwrót: wywalamy wszystkie malejące lewe kombinacje
                 for id in od_lewe:
                     if id > max_idx:
-                        self.log.error(f"Index za duży: {id}, dostępne: {self.kombinacje}")
+                        self.log.error(f"EZIL Index za duży: {id} (w {od_lewe}), dostępne: {self.kombinacje}")
                         continue
 
                     lewa_do_odj = self.kombinacje[id]
                     self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
                     komb_lewe.append(lewa_do_odj)
+                # I z drugiej strony usuwamy wszystkie kombinacje oprócz jednej
+                # w każdej iteracji innej kombinacji
                 if następny_do_pominięcia_prawy >= dł_prawe:
                     wszystkie_prawe_odjęte = True
                 else:
@@ -169,23 +179,18 @@ class Klawiatura:
                         if idx == następny_do_pominięcia_prawy:
                             continue
                         elif od_prawe[idx] > max_idx:
-                            self.log.error(f"pIdx za duży: {od_prawe[idx]},dostępne: {self.kombinacje}")
+                            self.log.error(f"EZIP Idx za duży: {od_prawe[idx]} (w {od_prawe}),dostępne: {self.kombinacje}")
                             continue
                         prawa_do_odj = self.kombinacje[od_prawe[idx]]
                         self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
+                        komb_prawe.append(prawa_do_odj)
                     akord = self.połącz_kombinacje(środek)
                     waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
                     niedopasowanie = waga_słowa - waga_środka - waga_akordu
                     if niedopasowanie <= limit_niedopasowania:
                         akordy.append((akord, niedopasowanie))
-                    for idx in range(dł_prawe):
-                        if idx == następny_do_pominięcia_prawy:
-                            continue
-                        elif od_prawe[idx] > max_idx:
-                            self.log.error(f"pIdx za duży: {od_prawe[idx]},dostępne: {self.kombinacje}")
-                            continue
-                        prawa_do_przywrócenia = self.kombinacje[od_prawe[idx]]
-                        self.ręka_prawa.aktywuj_kombinację(prawa_do_przywrócenia)
+                    for kombo in komb_prawe:
+                        self.ręka_prawa.aktywuj_kombinację(kombo)
                     następny_do_pominięcia_prawy += 1
                     limit_prób -= 1
                 # self.log.debug(f"Ko do aktywacji: {komb_lewe}")
@@ -214,7 +219,7 @@ class Klawiatura:
          waga_środka) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
                                                     sylaba_środkowa,
                                                     sylaby_prawe)
-        dbg = []#[["kie", "dy"]]
+        dbg = [["po", "sło", "wie"]]
         if sylaby in dbg:
             self.log.debug(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
         pierwsza = True
@@ -247,7 +252,7 @@ class Klawiatura:
             dostępne_id_kombinacji += 1
         if sylaby in dbg:
             self.log.debug(f"{sylaby}: środek: {kombinacja_środkowa}")
-        # pierwsza = True
+        pierwsza = False
         ostatnia = False
         długość_prawych = len(fonemy_prawe_orig)
         for i in range(długość_prawych):
@@ -465,6 +470,9 @@ class Klawisz:
         self.końcowy = końcowy
         self.samodzielny = samodzielny
 
+    def __repr__(self):
+        return f"({self.znak} wg:{self.waga} ({'P' if self.początkowy else ''}{'K' if self.końcowy else ''}{'S' if self.samodzielny else ''})"
+
     def zresetuj(self):
         self.waga = 0
         self.początkowy = False
@@ -512,7 +520,10 @@ class Klawisz:
             self.początkowy = False
         if kombinacja.końcowa:
             self.końcowy = False
-        self.waga -= kombinacja.waga
+        if self.waga > 0:
+            self.waga -= kombinacja.waga
+        else:
+            self.log.error(f"Za mała waga do deaktywacji: {self.waga}")
 
     def musi_zostać(self):
         return self.początkowy or self.końcowy
@@ -794,7 +805,7 @@ class Palec:
                 tekst += klawisz
         if tekst in self.wspierane_kombinacje:
             return tekst
-
+        self.log.debug(f"{tekst} nie jest wspierany")
         klawisz_do_deaktywacji = None
         for klawisz in self.klawisze.values():
             if klawisz.waga > 0 and self.można_deaktywować(klawisz):
@@ -806,12 +817,15 @@ class Palec:
                     klawisz_do_deaktywacji = klawisz
 
         if not klawisz_do_deaktywacji:
-            self.log.error(f"Nie znalazłem prawidłowej kombinacji dla {self.klawisze.keys()}")
+            self.log.error(f"Nie wiem jaki klawisz deaktywować: {[k for k in self.klawisze.values() if k.waga>0]}")
             return tekst  # To się nie powinno zdarzyć
         else:
+            # klawisz_do_deaktywacji.waga = 0 # Kombinacje stają się niekompletne! (OK?)
             return tekst.replace(klawisz_do_deaktywacji.znak, nic)
 
     def można_deaktywować(self, usuwany_klawisz):
+        if usuwany_klawisz.początkowy or usuwany_klawisz.końcowy:
+            return False
         tekst = ""
         for znak in self.obsługiwane_klawisze:
             if znak in self.klawisze.keys() and self.klawisze[znak].waga > 0:
@@ -914,6 +928,6 @@ class Kombinacja:
             yield klawisz
 
     def __repr__(self):
-        return f"{self.id_kombinacji}: {self.klawisze.keys()}"
+        return f"<ID:{self.id_kombinacji}{[klawisz for klawisz in self.klawisze.values()]}"
             
 

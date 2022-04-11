@@ -19,7 +19,7 @@ def main():
                         help='dane frekwencyjne (w formacie linii csv: "słowo",częstość)')
     parser.add_argument('--slowa', default='data/slownik',
                         help='słowa do utworzenia słownika podzielone na sy=la=by')
-    parser.add_argument('--baza', default='wyniki/baza-0.json',
+    parser.add_argument('--baza', default='wyniki/niedo-N5-1.json',
                         help='początkowy plik słownika w formacie JSON')
     parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja.py',
                         help='plik konfiguracji generatora')
@@ -56,15 +56,29 @@ def main():
     niepowodzenia = []
 
     
-    for (słowo, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
+    # for (słowo, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
+    #     if słowo in istniejące_słowa or słowo.isnumeric():
+    #         continue
+
+    #     udało_się = generator.wygeneruj_akordy(słowo, limit_niedopasowania=10, limit_prób=10)
+    #     if not udało_się:
+    #         niepowodzenia.append((słowo, frekwencja))
+    #     numer_generacji += 1
+    # log.info(f"Dodano {len(słownik) - linie_bazy} słów.")
+
+
+    ##  Na czas developmentu wyłączone
+    log.info("Dodaję słowa bez podanej częstotliwości")
+    istniejące_słowa = słownik.keys()
+    frekwencja = 1
+    for słowo in sylaby_słowa.keys():
         if słowo in istniejące_słowa or słowo.isnumeric():
             continue
-
-        udało_się = generator.wygeneruj_akordy(słowo, limit_niedopasowania=0, limit_prób=10)
+        udało_się = generator.wygeneruj_akordy(słowo, limit_niedopasowania=5, limit_prób=10)
         if not udało_się:
             niepowodzenia.append((słowo, frekwencja))
         numer_generacji += 1
-    log.info(f"Dodano {len(słownik) - linie_bazy} słów.")
+
 
     # log.info("Analizuję częstotliwość występowania fonemów...")
     # zanalizowane = 0
@@ -80,14 +94,37 @@ def main():
     #     i += 1
 
 
-    # Na czas developmentu wyłączone
+    # log.info("Analizuję końcówki słów...")
+    # zanalizowane = 0
+    # for (słowo, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
+    #     generator.analizuj_końcówki(słowo, frekwencja)
+    #     zanalizowane += 1
+    # for słowo in sylaby_słowa.keys():
+    #     generator.analizuj_końcówki(słowo, 1)
+    #     zanalizowane += 1
+    # log.info(f"Zanalizowano {zanalizowane} słów:\n")
+    # log.info(f"Końcówka\tCzęstotliwość występowania")
+    # i =0
+    # for ki, wi in {k: v for k, v in sorted(generator.analizowane_końcówki.items(),\
+    #                                        key=lambda item: item[1])}.items():
+    #     log.info(f"{i:2}: {ki:5}|{wi:10}")
+    #     i += 1
+    # log.info(f"Fonem\tCzęstotliwość występowania")
+    # i =0
+    # for ki, wi in {k: v for k, v in sorted(generator.analizowane_fonemy.items(),\
+    #                                        key=lambda item: item[1])}.items():
+    #     log.info(f"{i:2}: {ki:5}|{wi:10}")
+    #     i += 1
+
+
+    # ##  Na czas developmentu wyłączone
     # log.info("Dodaję słowa bez podanej częstotliwości")
     # istniejące_słowa = słownik.keys()
     # frekwencja = 1
     # for słowo in sylaby_słowa.keys():
     #     if słowo in istniejące_słowa or słowo.isnumeric():
     #         continue
-    #     udało_się = generator.wygeneruj_akordy(słowo, limit_niedopasowania=0, limit_prób=10)
+    #     udało_się = generator.wygeneruj_akordy(słowo, limit_niedopasowania=10, limit_prób=10)
     #     if not udało_się:
     #         niepowodzenia.append((słowo, frekwencja))
     #     numer_generacji += 1
@@ -102,7 +139,7 @@ def main():
 
     log.info("Zapis niesortowanego słownika zakończony, sortuję...")
     # kolejność = '/XFZSKTPVLRJE-~*IAUCRLBSGTWOY'
-    kolejność = '/XFZDNTPVKRJE-~*IAUCRLBSGTWOY'
+    kolejność = '/XFZDNTPVKRJE-~*IAUKZDWNTEOAI'
     # log.debug(f"{generator.kombinacje.items()}")
     try:
         posortowany_słownik = collections.OrderedDict(

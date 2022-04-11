@@ -5,63 +5,62 @@ class KonfiguracjaJęzyka:
     nic = ""
     samogłoski = ['a', 'ą', 'e', 'ę', 'i', 'o', 'ó', 'u', 'y']
     # {"Fonem": ("Lewa ręka", "Prawa ręka")}
-    fonemy_spółgłoskowe = {"b": ("PV", "B"),  # zm. lewe z P~
-                           "bi": ("PVJ", "BW"),  # zm. lewe z PJ~
-                           "c": ("TV", "C"),
-                           "ci": ("TVJ", "CW"),
-                           "ch": ("X", "CB"),
-                           "chi": ("XJ", "CBW"),
-                           "cz": ("XZ", "CL"),
-                           "czi": ("XZJ", "CLW"),
-                           "ć": ("TVJ", "CW"),  # zm. lewe z TJ, prawe z TW
-                           "d": ("D", "BT"),  # zm. lewe z T~
-                           "di": ("DJ", "BTW"),  # zm. lewe z TJ~
-                           "dz": ("ZD", "C"),  # Dodałem
-                           "dzi": ("ZDJ", "CW"),  # Dodałem
-                           "dź": ("ZDJ", "LST"),  # zm. lewe z ZTJ~
-                           "dż": ("XFZD", "RBTW"),  # zm. lewe z PV~, prawe z CLW
-                           "f": ("F", "W"),
-                           "fi": ("FJ", "LT"),  # zm. prawe z W
-                           "g": ("PK", "G"),  # zm. lewe z K~
-                           "gi": ("PKJ", "GW"),  # zm. lewe z KJ~
-                           "h": ("X", "~CB"),  # zm. lewe z XK~, prawe z CB~
-                           "hi": ("XJ", "~CBW"),  # zm. lewe z XKJ~, prawe z CBW
-                           "j": ("J", "CR"),
-                           "ji": ("J", "CRW"),
-                           "k": ("K", "ST"),  # zm. prawe z GW
-                           "ki": ("KJ", "STW"),  # zm. prawe z GW
-                           "l": ("KR", "L"),
-                           "li": ("KRJ", "LW"),
-                           "ł": ("NK", "LB"),  #  zm. lewe z LJ
-                           "łi": ("NKJ", "LBW"),  #  zm. lewe z LJ
-                           "m": ("VR", "CS"),
-                           "mi": ("VRJ", "CSW"),
-                           "n": ("N", "LS"),  # zm. prawe z CL
-                           "ni": ("NJ", "LSW"),  # zm. prawe z CLW
-                           "ń": ("NJ", "LSW"),  # zm. prawe z CLW
-                           # Tu zmieniłem prawą, bo nie ma "P" po prawej stronie
-                           "p": ("P", "RG"),
-                           "pi": ("PJ", "RGW"),
-                           "q": ("VK", "GWY"),
-                           "r": ("R", "R"),
-                           "ri": ("RJ", "RW"),
-                           "rz": ("FD", "RBW"),  # zm. lewe z RJ
-                           "s": ("NT", "S"),
-                           "si": ("NTJ", "SW"),
-                           "sz": ("ZN", "RB"),
-                           "ś": ("NTJ", "SW"),
+    fonemy_spółgłoskowe = {"b": ("PV", "KN"),
+                           "bi": ("PVJ", "KNI"),
+                           "c": ("TV", "WNT"),
+                           "ci": ("TVJ", "WNTI"),
+                           "ch": ("X", "ZWT"),
+                           "chi": ("XJ", "ZWTI"),
+                           "cz": ("XZ", "ZNT"),
+                           "czi": ("XZJ", "ZNTI"),
+                           "ć": ("TVJ", "WNTI"),
+                           "d": ("D", "D"),
+                           "di": ("DJ", "DI"),
+                           "dz": ("ZD", "KD"),
+                           "dzi": ("ZDJ", "KDI"),
+                           "dź": ("ZDJ", "KDI"),
+                           "dż": ("XFZD", "KZDW"),
+                           "f": ("F", "EOAI"),
+                           "fi": ("FJ", "TEOAI"),
+                           "g": ("PK", "DN"),
+                           "gi": ("PKJ", "DNI"),
+                           "h": ("X", "ZWT"),
+                           "hi": ("XJ", "ZWTI"),
+                           "j": ("J", "NT"),
+                           "ji": ("J", "NTI"),
+                           "k": ("K", "K"),
+                           "ki": ("KJ", "KI"),
+                           "l": ("KR", "WT"),
+                           "li": ("KRJ", "WTI"),
+                           "ł": ("NK", "KWT"),
+                           "łi": ("NKJ", "KWTI"),
+                           "m": ("VR", "KNT"),
+                           "mi": ("VRJ", "KNTI"),
+                           "n": ("N", "N"),
+                           "ni": ("NJ", "NI"),
+                           "ń": ("NJ", "NI"),
+                           "p": ("P", "DNT"),
+                           "pi": ("PJ", "DNTI"),
+                           "q": ("VK", "~O"),
+                           "r": ("R", "ZT"),
+                           "ri": ("RJ", "ZTI"),
+                           "rz": ("FD", "KZ"),
+                           "s": ("NT", "DW"),
+                           "si": ("NTJ", "DWI"),
+                           "sz": ("ZN", "ZW"),
+                           "ś": ("NTJ", "ZWI"),
                            "t": ("T", "T"),
-                           "ti": ("TJ", "TW"),
+                           "ti": ("TJ", "TI"),
                            "v": ("V", "W"),
-                           "vi": ("VJ", "LT"),  # zm. prawe z W
+                           "vi": ("VJ", "WI"),
                            "w": ("V", "W"),
-                           "wi": ("VJ", "LT"),  # zm. prawe z ~W
-                           "x": ("XF", "BSG"),
-                           "xi": ("XFJ", "BSGW"),
-                           "z": ("Z", "BS"),
-                           "zi": ("ZJ", "BSW"),
-                           "ź": ("ZJ", "BSW"),
-                           "ż": ("FD", "RBW")}  # zm. lewe z TP~
+                           "wi": ("VJ", "WI"),
+                           "x": ("XF", "~K"),
+                           "xi": ("XFJ", "~KI"),
+                           "z": ("Z", "Z"),
+                           "zi": ("ZJ", "ZI"),
+                           "ź": ("ZJ", "ZI"),
+                           "ż": ("FD", "KZ")}
 
 
     fonemy_spółgłoskowe_klucze = ["b", "bi", "c", "ci", "ch", "chi", "cz", "czi", "ć",
@@ -73,16 +72,16 @@ class KonfiguracjaJęzyka:
                                   "ź", "ż"]
 
     # {"Fonem": ("Środek", "Prawa ręka")}
-    fonemy_samogłoskowe = {"a": ("A", "TO"),
-                           "ą": ("~O", "TW"),
-                           "e": ("E", "TWOY"),
-                           "ę": ("E~", "OY"),
-                           "i": ("I", "W"),
+    fonemy_samogłoskowe = {"a": ("A", "A"),
+                           "ą": ("~O", "AI"),
+                           "e": ("E", "E"),
+                           "ę": ("E~", "EO"),
+                           "i": ("I", "I"),
                            "o": ("AU", "O"),
                            "ó": ("U", nic),
                            # Tutaj zabrałem prawą rękę z "i"
-                           "u": ("U", "WY"),
-                           "y": ("IAU", "Y")}
+                           "u": ("U", "OI"),
+                           "y": ("IAU", "EA")}
     fonemy_samogłoskowe_klucze = ["a", "ą", "e", "ę", "i",
                                   "o", "ó", "u", "y",]
 
@@ -121,10 +120,10 @@ class KonfiguracjaKlawiatury:
                   ("P", "V"),
                   ("K", "R", tylda, gwiazdka),
                   ("J", "E")]
-    palce_prawe = [(tylda, gwiazdka, "C", "R"),
-                  ("L", "B"),
-                  ("S", "G"),
-                  ("T", "W", "O", "Y")]
+    palce_prawe = [(tylda, gwiazdka, "K", "Z"),
+                  ("D", "W"),
+                  ("N", "T"),
+                  ("E", "O", "A", "I")]
     # indeksy kolumn po lewej stronie od 0
     lewe_indeksy_klawiszy = {"X": 0, "F": 0, "XF": 0, "XZ": 0, "FD": 0, "XFZD": 0,
                              "Z": 1, "D": 1, "ZD": 1,
@@ -137,11 +136,11 @@ class KonfiguracjaKlawiatury:
 
     # indeksy kolumn po prawej stronie od 0
     prawe_indeksy_klawiszy = {tylda: 5, gwiazdka: 5,
-                              "C": 6, "R": 6, "CR": 6,
-                              "L": 7, "B": 7, "LB": 7,
-                              "S": 8, "G": 8, "SG": 8,
-                              "T": 9, "W": 9, "TW": 9, "TO": 9, "WY": 9, "TWOY": 9,
-                              "O": 10, "Y": 10, "OY": 10}
+                              "K": 6, "Z": 6, "KZ": 6,
+                              "D": 7, "W": 7, "DW": 7,
+                              "N": 8, "T": 8, "NT": 8,
+                              "E": 9, "O": 9, "EO": 9, "EA": 9, "OI": 9, "EOAI": 9,
+                              "A": 10, "I": 10, "AI": 10}
 
 
     znaki_środka = [jot, ee, tylda, gwiazdka, ii, aa, uu]

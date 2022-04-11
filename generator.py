@@ -32,6 +32,7 @@ class Generator():
         self.minimum_kombinacji_per_słowo = 2
         self.niepowodzenia = []
         self.analizowane_fonemy = defaultdict(lambda: 0)
+        self.analizowane_końcówki = defaultdict(lambda: 0)
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info("Inicjalizuję bazę generatora")
@@ -113,17 +114,19 @@ class Generator():
             #  Na razie logika minimalistyczna
             for kombinacja in kombinacje:
                 if kombinacja[1] < limit_niedopasowania:
-                    self.log.info(f"Dodaję po specjalne: {kombinacja}")
+                    # self.log.info(f"Dodaję po specjalne: {kombinacja}")
                     nowe_podkombinacje = self.klawiatura.dodaj_znaki_specjalne_do_kombinacji(kombinacja)
                     nowe_kombinacje += nowe_podkombinacje
                     # if len(dodane) > 0:
                     #     break
             if nowe_kombinacje:
                 # if słowo == "nać":
-                self.log.info(f"nowe propozycje z ~*: {nowe_kombinacje}")
+                # self.log.info(f"nowe propozycje z ~*: {nowe_kombinacje}")
                 dodane += self._dopasuj_kombinacje(słowo, nowe_kombinacje)
         if self.postęp % self.loguj_postęp_co == 0:
             self.log.info(f"{self.postęp}: {słowo} - wygenerowano")
+        if self.postęp % 100 == 0:
+            self.log.debug(f"{self.postęp}: {słowo} - wygenerowano")
         if len(dodane) == 0:
             return False
         else:
@@ -150,3 +153,25 @@ class Generator():
             (nagłos, _śródgłos, wygłos) = self.język.fonemy_sylaby[sylaba]
             for fonem in nagłos + wygłos:
                 self.analizowane_fonemy[fonem] += częstotliwość
+
+    def analizuj_końcówki(self, słowo, częstotliwość):
+        try:
+            sylaby = self.sylaby_słowa[słowo]
+        except KeyError as e:
+            if len(słowo) == 1:
+                sylaby = [słowo]
+            else:
+                raise KeyError(f"Nie znam sylab, {e}")
+        if len(sylaby) > 2:
+            sylaba = sylaby[-1]
+            self.analizowane_końcówki[sylaba] += częstotliwość
+            self.analizuj_końcówkę(sylaba, częstotliwość)
+
+    def analizuj_końcówkę(self, sylaba, częstotliwość):
+            (nagłos, śródgłos, wygłos) = self.język.fonemy_sylaby[sylaba]
+            if not wygłos:
+                for fonem in nagłos + śródgłos:
+                    self.analizowane_fonemy[fonem] += częstotliwość
+            else:
+                for fonem in nagłos + wygłos:
+                    self.analizowane_fonemy[fonem] += częstotliwość
