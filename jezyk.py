@@ -1,7 +1,7 @@
 from pomocnicy import SłownikDomyślny
 import collections
 import re
-
+from pyphen import Pyphen
 
 nic = ""
 
@@ -17,9 +17,13 @@ class Język:
         self.fonemy_spółgłoskowe = konfiguracja.fonemy_spółgłoskowe
         self.samogłoski = konfiguracja.samogłoski
         self._samogłoski_re = re.compile(r'[aąeęioóuy]+')
+        self.sylabizator = Pyphen(lang='pl_PL')
 
     def rozbij(self, słowo):
         return [char for char in słowo]
+
+    def sylabizuj(self, słowo):
+        return self.sylabizator.inserted(słowo).split('-')
 
     def rozłóż_sylabę(self, sylaba: str):
         m = self._samogłoski_re.search(sylaba)
@@ -96,6 +100,7 @@ class Język:
                 waga_słowa += self.wagi_fonemów[fonem][0]
                 # self.log.debug(f"waga 2: {waga_słowa} {fonem}")
         (nagłos, śródgłos, wygłos) = self.fonemy_sylaby[sylaba_środkowa]
+        środek_bez_wygłosu = True
         for fonem in nagłos:
             waga_słowa += self.wagi_fonemów[fonem][0]
             # self.log.debug(f"waga 3: {waga_słowa} {fonem}")
@@ -109,31 +114,74 @@ class Język:
             waga_słowa += self.wagi_fonemów[fonem][1]
             # self.log.debug(f"waga 5: {waga_słowa} {fonem}")
             fonemy_prawe.append(fonem)
+            środek_bez_wygłosu = False
         if sylaby_prawe:
-            for sylaba in sylaby_prawe[:-1]:
+            for sylaba in sylaby_prawe[:-2]:
                 # self.log.info(f"syl prawe: {sylaba}")
                 (nagłos, śródgłos, wygłos) = self.fonemy_sylaby[sylaba]
-                for fonem in nagłos + wygłos:
-                    waga_słowa += self.wagi_fonemów[fonem][1]
-                    # self.log.debug(f"waga 6: {waga_słowa} {fonem}")
-                    fonemy_prawe.append(fonem)
-                for fonem in śródgłos:
-                    waga_słowa += self.wagi_fonemów[fonem][1]
-                    # self.log.debug(f"waga 7: {waga_słowa} {fonem}")
-            (nagłos, śródgłos, wygłos) = self.fonemy_sylaby[sylaby_prawe[-1]]
-            if not wygłos:
-                for fonem in nagłos + śródgłos:
-                    waga_słowa += self.wagi_fonemów[fonem][1]
-                    # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
-                    fonemy_prawe.append(fonem)
+                if środek_bez_wygłosu and len(nagłos) == 0:
+                    for fonem in śródgłos:
+                        waga_słowa += self.wagi_fonemów[fonem][0]
+                        waga_środka += self.wagi_fonemów[fonem][0]
+                        # self.log.debug(f"waga 6: {waga_słowa} {fonem}")
+                        śródgłosy.append(fonem)
+                    for fonem in wygłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 6b: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                else:
+                    for fonem in nagłos + wygłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 6: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in śródgłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 7: {waga_słowa} {fonem}")
+            if len(sylaby_prawe)>1:
+                (nagłos, śródgłos, wygłos) = self.fonemy_sylaby[sylaby_prawe[-2]]
+                (nagłos_o, śródgłos_o, wygłos_o) = self.fonemy_sylaby[sylaby_prawe[-1]]
+                if len(wygłos) == 0 and len(nagłos_o) == 0 and not wygłos_o:
+                    for fonem in nagłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in śródgłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in śródgłos_o:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                elif len(wygłos_o) == 0:
+                    for fonem in nagłos + wygłos + nagłos_o:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in śródgłos_o:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                else:
+                    for fonem in nagłos + wygłos + nagłos_o + wygłos_o:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
             else:
-                for fonem in nagłos + wygłos:
-                    waga_słowa += self.wagi_fonemów[fonem][1]
-                    # self.log.debug(f"waga 9: {waga_słowa} {fonem}")
-                    fonemy_prawe.append(fonem)
-                for fonem in śródgłos:
-                    waga_słowa += self.wagi_fonemów[fonem][1]
-                    # self.log.debug(f"waga 10: {waga_słowa} {fonem}")
+                (nagłos, śródgłos, wygłos) = self.fonemy_sylaby[sylaby_prawe[-1]]
+                if not wygłos:
+                    for fonem in nagłos + śródgłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                else:
+                    for fonem in nagłos + wygłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 9: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in śródgłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 10: {waga_słowa} {fonem}")
         zważone_lewe = self.zważ_fonemy(fonemy_lewe)
         zważone_środkowe = self.zważ_fonemy(śródgłosy)
         zważone_prawe = self.zważ_fonemy(fonemy_prawe, prawe=True)

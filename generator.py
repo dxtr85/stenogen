@@ -83,7 +83,12 @@ class Generator():
                         kombinacje_dodane.append(kombinacja)
         return kombinacje_dodane
                 
-    def wygeneruj_akordy(self, słowo, limit_niedopasowania, limit_prób=2):
+    def wygeneruj_akordy(self, słowo,
+                         limit_niedopasowania,
+                         limit_prób=2,
+                         bez_środka=False,
+                         z_gwiazdką=False):
+        # self.log.debug(f"Szukam dla: {słowo}")
         self.postęp += 1
 
         # Dla 'w', 'z'
@@ -93,45 +98,33 @@ class Generator():
             if len(słowo) == 1:
                 sylaby = [słowo]
             else:
-                raise KeyError(f"Nie znam sylab, {e}")
-        # self.log.info(f"Szukam dla: {słowo}")
-        kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_niedopasowania, limit_prób)
-        # self.log.info(f"Dostałem kombinacje: {kombinacje}")
-        dodane = []
-        if kombinacje:
-            dodane = self._dopasuj_kombinacje(słowo, kombinacje)
-        else:
-            self.log.debug(f"Nie znalazłem kombinacji dla: {słowo}")
-        if not dodane:
-            kombinacje = self.klawiatura.wygeneruj_akordy(słowo, sylaby, limit_niedopasowania, limit_prób, bez_środka=True)
-            if kombinacje:
-                dodane = self._dopasuj_kombinacje(słowo, kombinacje)
+                sylaby = self.język.sylabizuj(słowo)
+                # raise KeyError(f"Nie znam sylab, {e}")
+        akordy = self.klawiatura.wygeneruj_akordy(słowo,
+                                                      sylaby,
+                                                      limit_niedopasowania,
+                                                      limit_prób, bez_środka,
+                                                      z_gwiazdką)
+        return akordy
+
+    def dodaj_znaki_specjalne_do_akordów(self,
+                                         akordy,
+                                         limit_niedopasowania,
+                                         limit_prób=2):
         nowe_kombinacje = []
-        if len(dodane) == 0 and kombinacje:
-            # if słowo == "nać":
-            #     self.log.info(f"naci niet {kombinacje}")
-            #  Możemy pokombinować z gwiazdkami
-            #  Na razie logika minimalistyczna
-            for kombinacja in kombinacje:
-                if kombinacja[1] < limit_niedopasowania:
-                    # self.log.info(f"Dodaję po specjalne: {kombinacja}")
-                    nowe_podkombinacje = self.klawiatura.dodaj_znaki_specjalne_do_kombinacji(kombinacja)
-                    nowe_kombinacje += nowe_podkombinacje
-                    # if len(dodane) > 0:
-                    #     break
-            if nowe_kombinacje:
-                # if słowo == "nać":
-                # self.log.info(f"nowe propozycje z ~*: {nowe_kombinacje}")
-                dodane += self._dopasuj_kombinacje(słowo, nowe_kombinacje)
-        if self.postęp % self.loguj_postęp_co == 0:
-            self.log.info(f"{self.postęp}: {słowo} - wygenerowano")
-        if self.postęp % 100 == 0:
-            self.log.debug(f"{self.postęp}: {słowo} - wygenerowano")
-        if len(dodane) == 0:
-            return False
-        else:
-            return True
-        
+        for kombinacja in akordy:
+            if kombinacja[1] < limit_niedopasowania:
+                # self.log.debug(f"Dodaję po specjalne: {kombinacja}")
+                nowe_pkomb = self.klawiatura.dodaj_znaki_specjalne_do_kombinacji(kombinacja)
+                nowe_kombinacje += nowe_pkomb
+        return nowe_kombinacje
+
+    def dodaj_akordy_do_słownika(self, słowo, akordy):
+        # self.log.debug(f"Dostałem akordy: {akordy}")
+        dodane = []
+        dodane = self._dopasuj_kombinacje(słowo, akordy)
+        return dodane
+
     # Ponieważ sortowanie może trochę zająć, warto zapisać co już mamy
     # w razie gdyby skończył się zapas RAMu
     def generuj_do_pliku(self):

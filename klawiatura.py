@@ -26,7 +26,12 @@ class Klawiatura:
         # self.środek = Kciuki(log, konfiguracja)
         self.rozdzielacz = SłownikDomyślny(lambda x: dzielniki_dla_słowa_o_długości(x))
 
-    def wygeneruj_akordy(self, słowo, sylaby, limit_niedopasowania, limit_prób, bez_środka=False):
+    def wygeneruj_akordy(self, słowo,
+                         sylaby,
+                         limit_niedopasowania,
+                         limit_prób,
+                         bez_środka=False,
+                         z_gwiazdką=False):
         dzielniki_słowa = self.rozdzielacz[len(sylaby)]
         akordy = []
         for gdzie_podzielić in dzielniki_słowa:
@@ -35,14 +40,22 @@ class Klawiatura:
             limit_prób -= 1
             
             # self.log.debug(f"Dzielę {słowo} w {gdzie_podzielić}, limit: {limit_prób}")
+            kombinacje  = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić, z_gwiazdką)
+            if not kombinacje:
+                #  Przypadek kiedy pierwsza sylaba zaczyna się od samogłoski
+                #  a podział jest inny niż na pierwszej sylabie
+                self.log.info(f"{sylaby}/{gdzie_podzielić} - nic z tego")
+                continue
             (id_środkowej_kombinacji,
              kombinacja_środkowa,
              waga_środka,
-             waga_słowa) = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić)
+             waga_słowa) = kombinacje
             # self.log.debug(f"Waga słowa: {waga_słowa}")
             if bez_środka:
                 kombinacja_środkowa = ""
                 waga_środka = 0
+            if z_gwiazdką:  # TODO: Może to inaczej rozwiązać?
+                waga_słowa += 1
 
             kombinacje_do_odjęcia_lewe = self.do_odjęcia_aby_uzyskać_ciąg_niemalejący(self.minimalne_indeksy_lewe)
             kombinacje_do_odjęcia_prawe = self.do_odjęcia_aby_uzyskać_ciąg_niemalejący(self.minimalne_indeksy_prawe, id_środkowej_kombinacji + 1)
@@ -201,12 +214,15 @@ class Klawiatura:
             else:
                 break
         return akordy
-
-    def zbuduj_kombinacje_dla_sylab(self, sylaby, gdzie_podzielić):
+    # TODO obsługa 'z_gwiazdką'
+    def zbuduj_kombinacje_dla_sylab(self, sylaby, gdzie_podzielić, z_gwiazdką):
         (sylaby_lewe,
         sylaba_środkowa,
         sylaby_prawe) = self.podziel_sylaby_na_strony(sylaby,
                                                       gdzie_podzielić)
+        if len(sylaby_lewe) > 0 and sylaby_lewe[0][0] in self.język.samogłoski:
+            return None
+            
         # self.log.info(f"Podzielone: {sylaby_lewe} {sylaba_środkowa} {sylaby_prawe}")
         kombinacje_lewe = []
         kombinacja_środkowa = ""
@@ -219,7 +235,7 @@ class Klawiatura:
          waga_środka) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
                                                     sylaba_środkowa,
                                                     sylaby_prawe)
-        dbg = [["po", "sło", "wie"]]
+        dbg = []#["po", "sło", "wie"]]
         if sylaby in dbg:
             self.log.debug(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
         pierwsza = True
@@ -271,6 +287,28 @@ class Klawiatura:
             dostępne_id_kombinacji += 1
             if sylaby in dbg and kombinacja:
                 self.log.debug(f"{sylaby}: klaw P: {kombinacja.klawisze.keys()}")
+        if z_gwiazdką:
+            self.log.info(f"z_gwiazdką")
+            dodanie_gwiazdki_możliwe = self.ręka_lewa.dodanie_gwiazdki_możliwe() or\
+              self.ręka_prawa.dodanie_gwiazdki_możliwe()
+            kombinacja_gwiazdki = None
+            if dodanie_gwiazdki_możliwe:
+                self.log.info(f"można dodać gwiazdkę")
+                kombinacja_gwiazdki = self.ręka_lewa.dodaj_gwiazdkę(dostępne_id_kombinacji)
+                self.log.info(f"lewa: {kombinacja_gwiazdki}")
+                if kombinacja_gwiazdki:
+                    self.log.info(f"dodaję lewą")
+                    kombinacje_lewe.append(kombinacja_gwiazdki)
+                else:
+                    self.log.info(f"może prawa")
+                    kombinacja_gwiazdki = self.ręka_prawa.dodaj_gwiazdkę(dostępne_id_kombinacji)
+                    self.log.info(f"prawa: {kombinacja_gwiazdki}")
+                    if kombinacja_gwiazdki:
+                        self.log.info(f"dodaję prawą")
+                        kombinacje_prawe.append(kombinacja_gwiazdki)
+                    else:
+                        self.log.error(f"Nie udało się dodać gwiazdki")
+
         self.kombinacje = kombinacje_lewe + [kombinacja_środkowa] + kombinacje_prawe
         if sylaby in dbg and kombinacja:
                 self.log.debug(f"{sylaby}: kombinacje: {kombinacje_lewe} {kombinacja_środkowa} {kombinacje_prawe}")
@@ -407,13 +445,13 @@ class Klawiatura:
             znaki_lewe, znaki_prawe = znaki.split(jot)
             znaki_lewe = znaki_lewe + jot
         elif ee in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(ee)
+            znaki_lewe, znaki_prawe = znaki.split(ee, 1)  # z 1., bo te znaki są też na końcu układu
             znaki_lewe = znaki_lewe + ee
         elif ii in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(ii)
+            znaki_lewe, znaki_prawe = znaki.split(ii, 1)
             znaki_prawe = ii + znaki_prawe
         elif aa in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(aa)
+            znaki_lewe, znaki_prawe = znaki.split(aa, 1)
             znaki_prawe = aa + znaki_prawe
         elif uu in znaki:
             znaki_lewe, znaki_prawe = znaki.split(uu)
@@ -594,6 +632,15 @@ class RękaLewa:
                 # self.log.info(f"Dodaje {klawisz.znak} dla {kombinacja.id_kombinacji}")
                 palec.dodaj_klawisz(klawisz, kombinacja)
 
+    def dodaj_gwiazdkę(self, id_kombinacji):
+        return self.zbuduj_kombinację(id_kombinacji,
+                                      znaki='*',
+                                      pierwsza=False,
+                                      ostatnia=True)
+
+    def dodanie_gwiazdki_możliwe(self):
+        return not self.palec_wskazujący.dodanie_gwiazdki_możliwe()[0]
+
     def aktywuj_kombinację(self, kombinacja):
         id_komb = kombinacja.id_kombinacji
         if id_komb not in self.kombinacje.keys():
@@ -702,6 +749,15 @@ class RękaPrawa:
                 # self.log.info(f"Dodaje {klawisz.znak} dla {kombinacja.id_kombinacji}")
                 palec.dodaj_klawisz(klawisz, kombinacja)
 
+    def dodaj_gwiazdkę(self, id_kombinacji):
+        return self.zbuduj_kombinację(id_kombinacji,
+                                      znaki='*',
+                                      pierwsza=False,
+                                      ostatnia=True)
+
+    def dodanie_gwiazdki_możliwe(self):
+        return not self.palec_wskazujący.dodanie_gwiazdki_możliwe()[0]
+
     def aktywuj_kombinację(self, kombinacja):
         id_komb = kombinacja.id_kombinacji
         if id_komb not in self.kombinacje.keys():
@@ -805,7 +861,7 @@ class Palec:
                 tekst += klawisz
         if tekst in self.wspierane_kombinacje:
             return tekst
-        self.log.debug(f"{tekst} nie jest wspierany")
+        # self.log.debug(f"{tekst} nie jest wspierany")
         klawisz_do_deaktywacji = None
         for klawisz in self.klawisze.values():
             if klawisz.waga > 0 and self.można_deaktywować(klawisz):
@@ -859,21 +915,22 @@ class Palec:
         return (False, False)
 
     def dodanie_gwiazdki_możliwe(self):
+        ile_jest = 0
+        for klawisz in self.klawisze.values():
+            if klawisz.waga > 0:
+                ile_jest += 1
         if gwiazdka not in self.obsługiwane_klawisze:
             return (False, False)
         elif gwiazdka in self.klawisze.keys():
             return (False, False)
-        elif len(self.klawisze) == 3:
+        elif ile_jest == 3:
             # return (True, self.wspierane_kombinacje[-1])
             return (True, True)  # Gwiazdka wspierana, wtedy wszystkie klawisze aktywowane
-        elif len(self.klawisze) == 1\
-          and ("R" in self.klawisze.keys() or tylda in self.klawisze.keys()):
-            # if self.obsługiwane_klawisze[0] == "L"
-            #     return (True, "R*")
-            # else:
-            #     return (True, "*R")
+        elif ile_jest == 1 and "K" in self.klawisze.keys():
+            return (False, False)  # Gwiazdka wspierana, wtedy nie wszystkie klawisze aktywowane
+        elif ile_jest == 1:
             return (True, False)  # Gwiazdka wspierana, wtedy nie wszystkie klawisze aktywowane
-        elif len(self.klawisze) == 0:
+        elif ile_jest == 0:
             return (True, False)
         return (False, False)
 
