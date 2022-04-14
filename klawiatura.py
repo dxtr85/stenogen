@@ -44,7 +44,7 @@ class Klawiatura:
             if not kombinacje:
                 #  Przypadek kiedy pierwsza sylaba zaczyna się od samogłoski
                 #  a podział jest inny niż na pierwszej sylabie
-                self.log.info(f"{sylaby}/{gdzie_podzielić} - nic z tego")
+                # self.log.info(f"{sylaby}/{gdzie_podzielić} - nic z tego")
                 continue
             (id_środkowej_kombinacji,
              kombinacja_środkowa,
@@ -235,7 +235,7 @@ class Klawiatura:
          waga_środka) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
                                                     sylaba_środkowa,
                                                     sylaby_prawe)
-        dbg = []#["po", "sło", "wie"]]
+        dbg = [["neu", "ro", "cy", "ber"]]
         if sylaby in dbg:
             self.log.debug(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
         pierwsza = True
@@ -258,16 +258,16 @@ class Klawiatura:
             if sylaby in dbg and kombinacja:
                 self.log.debug(f"{sylaby}: klaw L: {kombinacja.klawisze.keys()}")
 
-        id_środkowej_kombinacji = len(kombinacje_lewe) - 1  # Workaround na pusty środek
+        # id_środkowej_kombinacji = None # len(kombinacje_lewe) - 1  # Workaround na pusty środek
         for fonem in śródgłos_orig:
             znaki = self.język.fonemy_samogłoskowe[fonem[0]][0]
             for znak in znaki:
                 if znak not in kombinacja_środkowa:
                     kombinacja_środkowa += znak
-            id_środkowej_kombinacji = dostępne_id_kombinacji
-            dostępne_id_kombinacji += 1
+        id_środkowej_kombinacji = dostępne_id_kombinacji
+        dostępne_id_kombinacji += 1
         if sylaby in dbg:
-            self.log.debug(f"{sylaby}: środek: {kombinacja_środkowa}")
+            self.log.debug(f"{sylaby}: środek {id_środkowej_kombinacji}: {kombinacja_środkowa}")
         pierwsza = False
         ostatnia = False
         długość_prawych = len(fonemy_prawe_orig)
@@ -288,23 +288,23 @@ class Klawiatura:
             if sylaby in dbg and kombinacja:
                 self.log.debug(f"{sylaby}: klaw P: {kombinacja.klawisze.keys()}")
         if z_gwiazdką:
-            self.log.info(f"z_gwiazdką")
+            # self.log.info(f"z_gwiazdką")
             dodanie_gwiazdki_możliwe = self.ręka_lewa.dodanie_gwiazdki_możliwe() or\
               self.ręka_prawa.dodanie_gwiazdki_możliwe()
             kombinacja_gwiazdki = None
             if dodanie_gwiazdki_możliwe:
-                self.log.info(f"można dodać gwiazdkę")
+                # self.log.info(f"można dodać gwiazdkę")
                 kombinacja_gwiazdki = self.ręka_lewa.dodaj_gwiazdkę(dostępne_id_kombinacji)
-                self.log.info(f"lewa: {kombinacja_gwiazdki}")
+                # self.log.info(f"lewa: {kombinacja_gwiazdki}")
                 if kombinacja_gwiazdki:
-                    self.log.info(f"dodaję lewą")
+                    # self.log.info(f"dodaję lewą")
                     kombinacje_lewe.append(kombinacja_gwiazdki)
                 else:
-                    self.log.info(f"może prawa")
+                    # self.log.info(f"może prawa")
                     kombinacja_gwiazdki = self.ręka_prawa.dodaj_gwiazdkę(dostępne_id_kombinacji)
-                    self.log.info(f"prawa: {kombinacja_gwiazdki}")
+                    # self.log.info(f"prawa: {kombinacja_gwiazdki}")
                     if kombinacja_gwiazdki:
-                        self.log.info(f"dodaję prawą")
+                        # self.log.info(f"dodaję prawą")
                         kombinacje_prawe.append(kombinacja_gwiazdki)
                     else:
                         self.log.error(f"Nie udało się dodać gwiazdki")

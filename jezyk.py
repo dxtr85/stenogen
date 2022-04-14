@@ -154,7 +154,15 @@ class Język:
                         # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
                         fonemy_prawe.append(fonem)
                 elif len(wygłos_o) == 0:
-                    for fonem in nagłos + wygłos + nagłos_o:
+                    for fonem in nagłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in wygłos:
+                        waga_słowa += self.wagi_fonemów[fonem][1]
+                        # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
+                        fonemy_prawe.append(fonem)
+                    for fonem in nagłos_o:
                         waga_słowa += self.wagi_fonemów[fonem][1]
                         # self.log.debug(f"waga 8: {waga_słowa} {fonem}")
                         fonemy_prawe.append(fonem)
@@ -213,3 +221,21 @@ class Język:
         return zważone_fonemy
 
 
+class Słowo:
+    def __init__(self, litery, jest_przedrostkiem=False, klejone=False):
+        self.litery = litery
+        self.isnumeric = litery.isnumeric()
+        self.jest_przedrostkiem=jest_przedrostkiem
+        self.klejone=klejone
+
+    def ustaw_klejone(self, ustawienie=True):
+        self.klejone=ustawienie
+
+    def __repr__(self):
+        if self.jest_przedrostkiem:
+            return f"{{}}{{&{self.litery}}}"
+        if self.klejone:
+            return f"{{&{self.litery}}}"
+        return f"{self.litery}"
+            
+    
