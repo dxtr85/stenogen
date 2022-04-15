@@ -9,6 +9,7 @@ aa = "A"
 uu = "U"
 nic = ""
 tyldogwiazdka = "~*"
+slash = "/"
 
 
 class Klawiatura:
@@ -25,6 +26,7 @@ class Klawiatura:
         self.ręka_prawa = RękaPrawa(log, konfiguracja)
         # self.środek = Kciuki(log, konfiguracja)
         self.rozdzielacz = SłownikDomyślny(lambda x: dzielniki_dla_słowa_o_długości(x))
+        self.dbg = [["u", "żyć"]]
 
     def wygeneruj_akordy(self, słowo,
                          sylaby,
@@ -34,6 +36,8 @@ class Klawiatura:
                          z_gwiazdką=False):
         dzielniki_słowa = self.rozdzielacz[len(sylaby)]
         akordy = []
+        if sylaby in self.dbg:
+                self.log.debug(f"wygeneruj: {sylaby}")
         for gdzie_podzielić in dzielniki_słowa:
             if limit_prób <= 0:
                 break
@@ -41,15 +45,20 @@ class Klawiatura:
             
             # self.log.debug(f"Dzielę {słowo} w {gdzie_podzielić}, limit: {limit_prób}")
             kombinacje  = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić, z_gwiazdką)
+            if sylaby in self.dbg:
+                self.log.debug(f"wygeneruj k: {kombinacje}")
+
             if not kombinacje:
                 #  Przypadek kiedy pierwsza sylaba zaczyna się od samogłoski
                 #  a podział jest inny niż na pierwszej sylabie
-                # self.log.info(f"{sylaby}/{gdzie_podzielić} - nic z tego")
+                # self.log.info(f"{sylaby}/{gdzie_podzielić} - nic z tego")  # TODO
                 continue
             (id_środkowej_kombinacji,
              kombinacja_środkowa,
              waga_środka,
              waga_słowa) = kombinacje
+            if sylaby in self.dbg:
+                self.log.debug(f"po zbuduj: {sylaby} kombi:{self.kombinacje}")
             # self.log.debug(f"Waga słowa: {waga_słowa}")
             if bez_środka:
                 kombinacja_środkowa = ""
@@ -60,17 +69,21 @@ class Klawiatura:
             kombinacje_do_odjęcia_lewe = self.do_odjęcia_aby_uzyskać_ciąg_niemalejący(self.minimalne_indeksy_lewe)
             kombinacje_do_odjęcia_prawe = self.do_odjęcia_aby_uzyskać_ciąg_niemalejący(self.minimalne_indeksy_prawe, id_środkowej_kombinacji + 1)
 
-            (akord, waga_akordu) = self.akord_bez_inwersji(kombinacje_do_odjęcia_lewe,
+            akord = self.akord_bez_inwersji(kombinacje_do_odjęcia_lewe,
                                             kombinacja_środkowa,
                                             kombinacje_do_odjęcia_prawe)
-            niedopasowanie = waga_słowa - waga_środka - waga_akordu
+            if sylaby in self.dbg:
+                self.log.debug(f"bez inversji: {sylaby} ako:{akord} {akord.niedopasowanie}")
+            # niedopasowanie = waga_słowa - waga_środka - waga_akordu
             # self.log.debug(f"Niedopasowanie: {niedopasowanie}")
-            if niedopasowanie < 0:
+            if akord.niedopasowanie < 0:
                 self.log.error(f"Niedopasowanie dla {słowo}: {niedopasowanie}")
                 self.log.error(f"  waga słowa {waga_słowa}, waga środka: {waga_środka}")
                 self.log.error(f"  waga akordu {waga_akordu}")
-            elif niedopasowanie <= limit_niedopasowania:
-                akordy.append((akord, niedopasowanie))
+            elif akord.niedopasowanie <= limit_niedopasowania:
+                if sylaby in self.dbg:
+                    self.log.debug(f"jest ok: {sylaby} ako:{akord}")
+                akordy.append(akord)#, niedopasowanie))
             # self.log.debug(f"Bez inv: {akordy}")
             if limit_prób > 0:
                 akordy += self.akordy_z_inwersją(kombinacje_do_odjęcia_lewe,
@@ -80,11 +93,14 @@ class Klawiatura:
                                                 waga_środka,
                                                 limit_niedopasowania,
                                                 limit_prób)
+            if sylaby in self.dbg:
+                self.log.debug(f"z inversjią: {sylaby} ako:{akordy}")
             # self.log.debug(f"Z inv: {akordy}")
             self.zresetuj_klawiaturę()
         return akordy
 
     def akord_bez_inwersji(self, od_lewe, środek, od_prawe):
+        self.log.debug(f"W bez inw: {od_lewe}, {środek}, {od_prawe}")
         komb_lewe = []
         komb_prawe = []
         max_idx = len(self.kombinacje) - 1
@@ -102,8 +118,8 @@ class Klawiatura:
             prawa_do_odj = self.kombinacje[idx_kombinacji]
             self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
             komb_prawe.append(idx_kombinacji)
-        akord = self.połącz_kombinacje(środek)
         waga = self.waga_na_klawiaturze()
+        akord = self.połącz_kombinacje(waga, środek, len(środek)) ## TODO: może waga_środka=0?
         # self.log.debug(f"Ko0 do aktywacji: {komb_lewe}")
         for idx_kombinacji in komb_lewe:
             lewa_do_dod = self.kombinacje[idx_kombinacji]
@@ -111,7 +127,7 @@ class Klawiatura:
         for idx_kombinacji in komb_prawe:
             prawa_do_dod = self.kombinacje[idx_kombinacji]
             self.ręka_prawa.aktywuj_kombinację(prawa_do_dod)
-        return (akord, waga)
+        return akord
 
     def akordy_z_inwersją(self, od_lewe, środek, od_prawe,
                           waga_słowa, waga_środka,
@@ -154,13 +170,13 @@ class Klawiatura:
                         lewa_do_odj = self.kombinacje[od_lewe[idx]]
                         self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
                         komb_lewe.append(lewa_do_odj)
-                    akord = self.połącz_kombinacje(środek)
-                    waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
-                    niedopasowanie = waga_słowa - waga_środka - waga_akordu
+                    akord = self.połącz_kombinacje(waga_słowa, środek, waga_środka)
+                    # waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
+                    # niedopasowanie = waga_słowa - waga_środka - waga_akordu
                     # self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {niedopasowanie}(waga ako: {waga_akordu})")
-                    if niedopasowanie <= limit_niedopasowania:
+                    if akord.niedopasowanie <= limit_niedopasowania:
                         # self.log.debug(f"Dodaję: {akord}")
-                        akordy.append((akord, niedopasowanie))
+                        akordy.append(akord)#, waga_akordu))
                     # self.log.debug(f"KoMb do aktywacji: {komb_lewe}")
                     # Aktywujemy spowrotem kombinacje lewe
                     for komb in komb_lewe:
@@ -197,11 +213,11 @@ class Klawiatura:
                         prawa_do_odj = self.kombinacje[od_prawe[idx]]
                         self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
                         komb_prawe.append(prawa_do_odj)
-                    akord = self.połącz_kombinacje(środek)
-                    waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
-                    niedopasowanie = waga_słowa - waga_środka - waga_akordu
-                    if niedopasowanie <= limit_niedopasowania:
-                        akordy.append((akord, niedopasowanie))
+                    akord = self.połącz_kombinacje(waga_słowa, środek, waga_środka)
+                    # waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
+                    # niedopasowanie = waga_słowa - waga_środka - waga_akordu
+                    if akord.niedopasowanie <= limit_niedopasowania:
+                        akordy.append(akord)
                     for kombo in komb_prawe:
                         self.ręka_prawa.aktywuj_kombinację(kombo)
                     następny_do_pominięcia_prawy += 1
@@ -214,14 +230,19 @@ class Klawiatura:
             else:
                 break
         return akordy
+
     # TODO obsługa 'z_gwiazdką'
     def zbuduj_kombinacje_dla_sylab(self, sylaby, gdzie_podzielić, z_gwiazdką):
         (sylaby_lewe,
         sylaba_środkowa,
         sylaby_prawe) = self.podziel_sylaby_na_strony(sylaby,
                                                       gdzie_podzielić)
-        if len(sylaby_lewe) > 0 and sylaby_lewe[0][0] in self.język.samogłoski:
-            return None
+        if sylaby in self.dbg:
+            self.log.debug(f"zbuduj: {sylaby}")
+        # if len(sylaby_lewe) > 0 and sylaby_lewe[0][0] in self.język.samogłoski:
+        #     if sylaby in self.dbg:
+        #         self.log.debug(f"??? {sylaby}")
+        #     return None
             
         # self.log.info(f"Podzielone: {sylaby_lewe} {sylaba_środkowa} {sylaby_prawe}")
         kombinacje_lewe = []
@@ -235,8 +256,7 @@ class Klawiatura:
          waga_środka) = self.język.rozbij_sylaby_na_fonemy(sylaby_lewe,
                                                     sylaba_środkowa,
                                                     sylaby_prawe)
-        dbg = [["neu", "ro", "cy", "ber"]]
-        if sylaby in dbg:
+        if sylaby in self.dbg:
             self.log.debug(f"{sylaby} ({waga_słowa} {waga_środka}): L:{fonemy_lewe_orig}|Ś:{śródgłos_orig}|P:{fonemy_prawe_orig}")
         pierwsza = True
         ostatnia = False
@@ -246,7 +266,7 @@ class Klawiatura:
             # if i == długość_lewych -1:
             #     ostatnia = True
             znaki = self.klawisze_dla_fonemu(fonem)
-            if sylaby in dbg:
+            if sylaby in self.dbg:
                 self.log.debug(f"{sylaby} lewe: {znaki} id: {dostępne_id_kombinacji}")
             kombinacja = self.ręka_lewa.zbuduj_kombinację(dostępne_id_kombinacji,
                                                             znaki,
@@ -255,7 +275,7 @@ class Klawiatura:
             pierwsza = False
             kombinacje_lewe.append(kombinacja)
             dostępne_id_kombinacji += 1
-            if sylaby in dbg and kombinacja:
+            if sylaby in self.dbg and kombinacja:
                 self.log.debug(f"{sylaby}: klaw L: {kombinacja.klawisze.keys()}")
 
         # id_środkowej_kombinacji = None # len(kombinacje_lewe) - 1  # Workaround na pusty środek
@@ -266,7 +286,7 @@ class Klawiatura:
                     kombinacja_środkowa += znak
         id_środkowej_kombinacji = dostępne_id_kombinacji
         dostępne_id_kombinacji += 1
-        if sylaby in dbg:
+        if sylaby in self.dbg:
             self.log.debug(f"{sylaby}: środek {id_środkowej_kombinacji}: {kombinacja_środkowa}")
         pierwsza = False
         ostatnia = False
@@ -276,7 +296,7 @@ class Klawiatura:
             if i == długość_prawych -1:
                 ostatnia = True
             znaki = self.klawisze_dla_fonemu(fonem, prawe=True)
-            if sylaby in dbg:
+            if sylaby in self.dbg:
                 self.log.debug(f"{sylaby} prawe: {znaki} id: {dostępne_id_kombinacji}(ost: {ostatnia})")
             kombinacja = self.ręka_prawa.zbuduj_kombinację(dostępne_id_kombinacji,
                                                            znaki,
@@ -285,7 +305,7 @@ class Klawiatura:
             # pierwsza = False
             kombinacje_prawe.append(kombinacja)
             dostępne_id_kombinacji += 1
-            if sylaby in dbg and kombinacja:
+            if sylaby in self.dbg and kombinacja:
                 self.log.debug(f"{sylaby}: klaw P: {kombinacja.klawisze.keys()}")
         if z_gwiazdką:
             # self.log.info(f"z_gwiazdką")
@@ -310,7 +330,7 @@ class Klawiatura:
                         self.log.error(f"Nie udało się dodać gwiazdki")
 
         self.kombinacje = kombinacje_lewe + [kombinacja_środkowa] + kombinacje_prawe
-        if sylaby in dbg and kombinacja:
+        if sylaby in self.dbg and kombinacja:
                 self.log.debug(f"{sylaby}: kombinacje: {kombinacje_lewe} {kombinacja_środkowa} {kombinacje_prawe}")
         self.minimalne_indeksy_lewe = self.minimalne_indeksy_kombinacji(kombinacje_lewe)
         self.minimalne_indeksy_prawe = self.minimalne_indeksy_kombinacji(kombinacje_prawe)
@@ -356,42 +376,51 @@ class Klawiatura:
                 return nic
             return self.język.fonemy_spółgłoskowe[fonem][0]
 
-    def połącz_kombinacje(self, kombinacja_środkowa): #, ręka_lewa, kombinacja_środkowa, ręka_prawa):
-        ręka_lewa = self.ręka_lewa.akord_lewy()
+    def połącz_kombinacje(self, waga_słowa, kombinacja_środkowa, waga_środka): #, ręka_lewa, kombinacja_środkowa, ręka_prawa):
+        akord_lewy = self.ręka_lewa.akord_lewy()
+        akord_środkowy = Akord(self.log, kombinacja_środkowa) #, len(kombinacja_środkowa))  ## TODO waga środka
         # (środek_l, środek_p) = self.środek.akordy_środka()
-        ręka_prawa = self.ręka_prawa.akord_prawy()
-        tylda_lewa = tylda in ręka_lewa[0]
-        tylda_prawa = tylda in ręka_prawa[0]
-        gwiazdka_lewa = gwiazdka in ręka_lewa[0]
-        gwiazdka_prawa = gwiazdka in ręka_prawa[0]
-        ptyldogwiazdka = nic
-        ręka_lewa_znaki = ręka_lewa[0]
-        ręka_prawa_znaki = ręka_prawa[0]
-        if tylda_lewa or tylda_prawa:
-            ręka_lewa_znaki = ręka_lewa_znaki.replace(tylda, nic)
-            ręka_prawa_znaki = ręka_prawa_znaki.replace(tylda, nic)
-            kombinacja_środkowa = kombinacja_środkowa.replace(tylda, nic)
-            ptyldogwiazdka = tylda
+        akord_prawy = self.ręka_prawa.akord_prawy()
+        # self.log.info(f"Łączę L+S: {akord_lewy} + {akord_środkowy}")
+        połączony_akord = akord_lewy + akord_środkowy
+        # self.log.info(f"Łączę LS+P: {połączony_akord} + {akord_prawy}")
+        wyjściowy_akord = połączony_akord + akord_prawy
+        return wyjściowy_akord
+        
+        # tylda_lewa = tylda in akord_lewy.tekst
+        # tylda_prawa = tylda in akord_prawy.tekst
+        # gwiazdka_lewa = gwiazdka in akord_lewy.tekst
+        # gwiazdka_prawa = gwiazdka in akord_prawy.tekst
+        # ptyldogwiazdka = nic
+        # ręka_lewa_znaki = akord_lewy.tekst
+        # ręka_prawa_znaki = akord_prawy.tekst
+        # if tylda_lewa or tylda_prawa:
+        #     ręka_lewa_znaki = ręka_lewa_znaki.replace(tylda, nic)
+        #     ręka_prawa_znaki = ręka_prawa_znaki.replace(tylda, nic)
+        #     kombinacja_środkowa = kombinacja_środkowa.replace(tylda, nic)
+        #     ptyldogwiazdka = tylda
 
-        if gwiazdka_lewa or gwiazdka_prawa:
-            ręka_lewa_znaki = ręka_lewa_znaki.replace(gwiazdka, nic)
-            ręka_prawa_znaki = ręka_prawa_znaki.replace(gwiazdka, nic)
-            kombinacja_środkowa = kombinacja_środkowa.replace(gwiazdka, nic)
-            ptyldogwiazdka += gwiazdka
-        if len(ptyldogwiazdka) == 0:
-            ptyldogwiazdka = myślnik  # TODO jest więcej przypadków gdzie myślnik można ominąć
-        kombinacja_środkowa += ptyldogwiazdka
-        wynik = nic
-        for znak in self.znaki_środka:
-            if znak in kombinacja_środkowa:
-                wynik += znak
-        if wynik == nic and not ręka_lewa_znaki.endswith(jot):
-            wynik = myślnik
+        # if gwiazdka_lewa or gwiazdka_prawa:
+        #     ręka_lewa_znaki = ręka_lewa_znaki.replace(gwiazdka, nic)
+        #     ręka_prawa_znaki = ręka_prawa_znaki.replace(gwiazdka, nic)
+        #     kombinacja_środkowa = kombinacja_środkowa.replace(gwiazdka, nic)
+        #     ptyldogwiazdka += gwiazdka
+        # if len(ptyldogwiazdka) == 0:
+        #     ptyldogwiazdka = myślnik  # TODO jest więcej przypadków gdzie myślnik można ominąć
+        # kombinacja_środkowa += ptyldogwiazdka
+        # wynik = nic
+        # for znak in self.znaki_środka:
+        #     if znak in kombinacja_środkowa:
+        #         wynik += znak
+        # if wynik == nic and not ręka_lewa_znaki.endswith(jot):
+        #     wynik = myślnik
 
-        return (ręka_lewa_znaki + wynik + ręka_prawa_znaki,
-                (ręka_lewa[1], ręka_prawa[1]),  # dodanie tyldy możliwe
-                (ręka_lewa[2], ręka_prawa[2]),  # dodanie gwiazdki możliwe
-                (ręka_lewa[3], ręka_prawa[3]))  # dodanie tyldogwiazdki możliwe
+        # return (ręka_lewa_znaki + wynik + ręka_prawa_znaki,
+        #         (ręka_lewa[1], ręka_prawa[1]),  # dodanie tyldy możliwe
+        #         (ręka_lewa[2], ręka_prawa[2]),  # dodanie gwiazdki możliwe
+        #         (ręka_lewa[3], ręka_prawa[3]))  # dodanie tyldogwiazdki możliwe
+
+        
     def waga_na_klawiaturze(self):
         # self.log.info(f"L:{self.ręka_lewa.waga()} P:{self.ręka_prawa.waga()}")
         return self.ręka_lewa.waga() + self.ręka_prawa.waga()
@@ -418,74 +447,111 @@ class Klawiatura:
                     return (False, i)
         return (True, None)
 
-    def dodaj_znaki_specjalne_do_kombinacji(self, kombinacja):
+    def dodaj_znaki_specjalne_do_akordu(self, akord):
         #   ( (dodanie_tyldy_z_lewej, czy_wszystkie_klawisze),
         #     (dodanie_tyldy_z_prawej, czy_wszystkie_klawisze) ),
         #   ( (dodanie_gwiazdki_z_lewej, czy_wszystkie_klawisze),
         #     (dodanie_gwiazdki_z_prawej, czy_wszystkie_klawisze) ),
         #   ( (dodanie_tyldogwiazdki_z_lewej, czy_wszystkie_klawisze),
         #     (dodanie_tyldogwiazdki_z_prawej, czy_wszystkie_klawisze) ) )
-        nowe_kombinacje = []
-        (kombo, niedopasowanie) = kombinacja
+        # nowe_kombinacje = []
+        # (kombo, niedopasowanie) = kombinacja
         #('TLE~GO', ((False, False), (False, False)), ((False, False), (False, False)), ((False, False), (True, False)))
-        (znaki, ((l_tylda, lt_wszystko),(p_tylda, pt_wszystko)),
-                ((l_gwiazdka, lg_wszystko), (p_gwiazdka, pg_wszystko)),
-                ((l_tyldogwiazdka, ltg_wszystko), (p_tyldogwiazdka, ptg_wszystko))) = kombo
-        tylda_już_jest = tylda in znaki
-        gwiazdka_już_jest = gwiazdka in znaki
-        if myślnik in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(myślnik)
-        elif tylda in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(tylda)
-            znaki_prawe = tylda + znaki_prawe
-        elif gwiazdka in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(gwiazdka)
-            znaki_prawe = gwiazdka + znaki_prawe
-        elif jot in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(jot)
-            znaki_lewe = znaki_lewe + jot
-        elif ee in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(ee, 1)  # z 1., bo te znaki są też na końcu układu
-            znaki_lewe = znaki_lewe + ee
-        elif ii in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(ii, 1)
-            znaki_prawe = ii + znaki_prawe
-        elif aa in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(aa, 1)
-            znaki_prawe = aa + znaki_prawe
-        elif uu in znaki:
-            znaki_lewe, znaki_prawe = znaki.split(uu)
-            znaki_prawe = uu + znaki_prawe
-        else:
-            print(f"ERR: Nie wiem jak podzielić {znaki} w {kombo}")
-            return []
-        znaki_lewe = znaki_lewe.replace(myślnik, nic)
-        znaki_prawe = znaki_prawe.replace(myślnik, nic)
-        gołe_lewe = znaki_lewe.replace(gwiazdka, nic).replace(tylda, nic)
-        gołe_prawe = znaki_prawe.replace(gwiazdka, nic).replace(tylda, nic)
-        istniejąca_tylda = nic
-        if tylda_już_jest:
-            istniejąca_tylda = tylda
-        istniejąca_gwiazdka = nic
-        if gwiazdka_już_jest:
-            istniejąca_gwiazdka = gwiazdka
-        wzrost_niedopasowania = 0
-        if not tylda_już_jest and (l_tylda or p_tylda):
-            nowe_kombinacje.append(gołe_lewe + tylda + istniejąca_gwiazdka + gołe_prawe)
-            wzrost_niedopasowania += 1
-        if not gwiazdka_już_jest and (l_gwiazdka or p_gwiazdka):
-            nowe_kombinacje.append(gołe_lewe + istniejąca_tylda + gwiazdka + gołe_prawe)
-            wzrost_niedopasowania += 1
-        if not (tylda_już_jest and gwiazdka_już_jest) and (l_tyldogwiazdka or p_tyldogwiazdka):
-            nowe_kombinacje.append(gołe_lewe + tylda + gwiazdka + gołe_prawe)
-            wzrost_niedopasowania += 1
-        output = []
-        for nowa in nowe_kombinacje:
-            output.append( ((nowa, ((l_tylda, lt_wszystko),(p_tylda, pt_wszystko)),
-                                   ((l_gwiazdka, lg_wszystko), (p_gwiazdka, pg_wszystko)),
-                                   ((l_tyldogwiazdka, ltg_wszystko), (p_tyldogwiazdka, ptg_wszystko))),
-                            niedopasowanie + wzrost_niedopasowania))
-        return output
+        # (znaki, ((l_tylda, lt_wszystko),(p_tylda, pt_wszystko)),
+        #         ((l_gwiazdka, lg_wszystko), (p_gwiazdka, pg_wszystko)),
+        #         ((l_tyldogwiazdka, ltg_wszystko), (p_tyldogwiazdka, ptg_wszystko))) = kombo
+        # znaki_przedrostka = ""
+        # if slash in znaki:
+        #     (znaki_przedrostka, znaki) = znaki.split(slash)
+        #     znaki_przedrostka += slash
+        # tylda_już_jest = tylda in znaki
+        # gwiazdka_już_jest = gwiazdka in znaki
+        # if myślnik in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(myślnik)
+        # elif tylda in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(tylda)
+        #     znaki_prawe = tylda + znaki_prawe
+        # elif gwiazdka in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(gwiazdka)
+        #     znaki_prawe = gwiazdka + znaki_prawe
+        # elif jot in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(jot)
+        #     znaki_lewe = znaki_lewe + jot
+        # elif ee in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(ee, 1)  # z 1., bo te znaki są też na końcu układu
+        #     znaki_lewe = znaki_lewe + ee
+        # elif ii in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(ii, 1)
+        #     znaki_prawe = ii + znaki_prawe
+        # elif aa in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(aa, 1)
+        #     znaki_prawe = aa + znaki_prawe
+        # elif uu in znaki:
+        #     znaki_lewe, znaki_prawe = znaki.split(uu)
+        #     znaki_prawe = uu + znaki_prawe
+        # else:
+        #     print(f"ERR: Nie wiem jak podzielić {znaki} w {kombo}")
+        #     return []
+        # znaki_lewe = znaki_lewe.replace(myślnik, nic)
+        # znaki_prawe = znaki_prawe.replace(myślnik, nic)
+        # gołe_lewe = znaki_lewe.replace(gwiazdka, nic).replace(tylda, nic)
+        # gołe_prawe = znaki_prawe.replace(gwiazdka, nic).replace(tylda, nic)
+        # istniejąca_tylda = nic
+        # if tylda_już_jest:
+        #     istniejąca_tylda = tylda
+        # istniejąca_gwiazdka = nic
+        # if gwiazdka_już_jest:
+        #     istniejąca_gwiazdka = gwiazdka
+        # wzrost_niedopasowania = 0
+        # if not tylda_już_jest and (l_tylda or p_tylda):
+        #     nowe_kombinacje.append(znaki_przedrostka + gołe_lewe + tylda + istniejąca_gwiazdka + gołe_prawe)
+        #     wzrost_niedopasowania += 1
+        # if not gwiazdka_już_jest and (l_gwiazdka or p_gwiazdka):
+        #     nowe_kombinacje.append(znaki_przedrostka + gołe_lewe + istniejąca_tylda + gwiazdka + gołe_prawe)
+        #     wzrost_niedopasowania += 1
+        # if not (tylda_już_jest and gwiazdka_już_jest) and (l_tyldogwiazdka or p_tyldogwiazdka):
+        #     nowe_kombinacje.append(znaki_przedrostka + gołe_lewe + tylda + gwiazdka + gołe_prawe)
+        #     wzrost_niedopasowania += 1
+        # output = []
+        # for nowa in nowe_kombinacje:
+        #     output.append( ((nowa, ((l_tylda, lt_wszystko),(p_tylda, pt_wszystko)),
+        #                            ((l_gwiazdka, lg_wszystko), (p_gwiazdka, pg_wszystko)),
+        #                            ((l_tyldogwiazdka, ltg_wszystko), (p_tyldogwiazdka, ptg_wszystko))),
+        #                     niedopasowanie + wzrost_niedopasowania))
+        # return output
+        # TODO: obsługa ciągów akordów
+        ciąg = False
+        if isinstance(akord, list):
+            ciąg = akord[:-1]
+            akord = akord[-1]
+        nowe_akordy = []
+        # TODO: obsługa drugich booli
+        if akord.dodanie_tyldy[0]:
+            nowy_akord = akord.kopia()
+            nowy_akord.jest_tylda = True
+            nowe_akordy.append(nowy_akord)
+        if akord.dodanie_gwiazdki[0]:
+            nowy_akord = akord.kopia()
+            nowy_akord.jest_gwiazdka = True
+            nowe_akordy.append(nowy_akord)
+        if akord.dodanie_tyldogwiazdki[0]:
+            nowy_akord = akord.kopia()
+            nowy_akord.jest_tylda = True
+            nowy_akord.jest_gwiazdka = True
+            nowe_akordy.append(nowy_akord)
+        if not ciąg:
+            # self.log.debug(f"Zwracam ako: {nowe_akordy}")
+            return nowe_akordy
+        nowe_ciągi = []
+        for akord in nowe_akordy:
+            nowy_ciąg = []
+            for istniejący_akord in ciąg:
+                nowy_ciąg.append(istniejący_akord)
+            nowy_ciąg.append(akord)
+            # self.log.debug(f"Dorzucam {akord} do {ciąg}): {nowy_ciąg}")
+            nowe_ciągi.append(nowy_ciąg)
+        # self.log.debug(f"Zwracam cio({ciąg} - {ciąg.copy()}): {nowe_ciągi}")
+        return nowe_ciągi
 
     def zresetuj_klawiaturę(self):
         self.ręka_lewa.zresetuj_rękę()
@@ -509,7 +575,7 @@ class Klawisz:
         self.samodzielny = samodzielny
 
     def __repr__(self):
-        return f"({self.znak} wg:{self.waga} ({'P' if self.początkowy else ''}{'K' if self.końcowy else ''}{'S' if self.samodzielny else ''})"
+        return f"({self.znak} ({self.waga}-{'P' if self.początkowy else ''}{'K' if self.końcowy else ''}{'S' if self.samodzielny else ''})"
 
     def zresetuj(self):
         self.waga = 0
@@ -677,14 +743,19 @@ class RękaLewa:
 
     def akord_lewy(self):
         tekst = self.palec_mały.tekst()
+        # waga =  self.palec_mały.waga()
         tekst += self.palec_serdeczny.tekst()
+        # waga += self.palec_serdeczny.waga()
         tekst += self.palec_środkowy.tekst()
+        # waga += self.palec_środkowy.waga()
         tekst += self.palec_wskazujący.tekst()
+        # waga += self.palec_wskazujący.waga()
         tekst += self.kciuk_lewy.tekst()
+        # waga += self.kciuk_lewy.waga()
         dodanie_tyldy = self.palec_wskazujący.dodanie_tyldy_możliwe()
         dodanie_gwiazdki = self.palec_wskazujący.dodanie_gwiazdki_możliwe()
         dodanie_tyldogwiazdki = self.palec_wskazujący.dodanie_tyldy_i_gwiazdki_możliwe()
-        return (tekst, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
+        return Akord(self.log, tekst, 0, nic, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
 
 
 class RękaPrawa:
@@ -794,13 +865,17 @@ class RękaPrawa:
 
     def akord_prawy(self):
         tekst = self.palec_wskazujący.tekst()
+        # waga = self.palec_wskazujący.waga()
         tekst += self.palec_środkowy.tekst()
+        # waga += self.palec_środkowy.waga()
         tekst += self.palec_serdeczny.tekst()
+        # waga += self.palec_serdeczny.waga()
         tekst += self.palec_mały.tekst()
+        # waga += self.palec_mały.waga()
         dodanie_tyldy = self.palec_wskazujący.dodanie_tyldy_możliwe()
         dodanie_gwiazdki = self.palec_wskazujący.dodanie_gwiazdki_możliwe()
         dodanie_tyldogwiazdki = self.palec_wskazujący.dodanie_tyldy_i_gwiazdki_możliwe()
-        return (tekst, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
+        return Akord(self.log, nic, 0, tekst, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
         
 
 class Palec:
@@ -985,6 +1060,176 @@ class Kombinacja:
             yield klawisz
 
     def __repr__(self):
-        return f"<ID:{self.id_kombinacji}{[klawisz for klawisz in self.klawisze.values()]}"
+        return f"<{self.id_kombinacji}:{[klawisz for klawisz in self.klawisze.values()]}>\n"
             
 
+class Akord:
+    def __init__(self,
+                 log,
+                 tekst_lewy,
+                 niedopasowanie = 0,
+                 tekst_prawy = "",
+                 dodanie_tyldy = (False, False),
+                 dodanie_gwiazdki = (False, False),
+                 dodanie_tyldogwiazdki = (False, False)):
+        self.log = log
+        self.niedopasowanie = niedopasowanie
+        self.dodanie_tyldy = dodanie_tyldy
+        self.dodanie_gwiazdki = dodanie_gwiazdki
+        self.dodanie_tyldogwiazdki = dodanie_tyldogwiazdki
+        # self.log.info(f"tlewy: {tekst_lewy}, tprawy: {tekst_prawy}")
+        self.jest_tylda = tylda in tekst_lewy or tylda in tekst_prawy   # TODO dla dwuczłonowych akordów z przedrostkiem
+        self.jest_gwiazdka = gwiazdka in tekst_lewy or gwiazdka in tekst_prawy  # TODO j.w.
+        self.jest_jot = jot in tekst_lewy or jot in tekst_prawy
+        self.jest_ee = ee in tekst_lewy or ee in tekst_prawy
+        self.jest_ii = ii in tekst_lewy or ii in tekst_prawy
+        self.jest_aa = aa in tekst_lewy or aa in tekst_prawy
+        self.jest_uu = uu in tekst_lewy or uu in tekst_prawy
+        if tekst_prawy == "":
+            (tekst_lewy, tekst_prawy) = self.tekst_na_pół(tekst_lewy)
+        if self.jest_tylda:
+            tekst_lewy = tekst_lewy.replace(tylda, nic)
+            tekst_prawy = tekst_prawy.replace(tylda, nic)
+        if self.jest_gwiazdka:
+            tekst_lewy = tekst_lewy.replace(gwiazdka, nic)
+            tekst_prawy = tekst_prawy.replace(gwiazdka, nic)
+        if self.jest_jot:
+            tekst_lewy = tekst_lewy.replace(jot, nic)
+            tekst_prawy = tekst_prawy.replace(jot, nic)
+        if self.jest_ee:
+            tekst_lewy = tekst_lewy.replace(ee, nic)
+            tekst_prawy = tekst_prawy.replace(ee, nic)
+        if self.jest_ii:
+            tekst_lewy = tekst_lewy.replace(ii, nic)
+            tekst_prawy = tekst_prawy.replace(ii, nic)
+        if self.jest_aa:
+            tekst_lewy = tekst_lewy.replace(aa, nic)
+            tekst_prawy = tekst_prawy.replace(aa, nic)
+        if self.jest_uu:
+            tekst_lewy = tekst_lewy.replace(uu, nic)
+            tekst_prawy = tekst_prawy.replace(uu, nic)
+
+        self.tekst_lewy = tekst_lewy
+        self.tekst_prawy = tekst_prawy
+        # self.log.debug(f"Akord: {self}")
+
+    # def __truediv__(self, akord):
+    #     return Akord(f"{self}{slash}{akord}",
+    #                  self.waga + akord.waga,
+    #                  tekst_prawy=nic,
+    #                  akord.dodanie_tyldy,
+    #                  akord.dodanie_gwiazdki,
+    #                  akord.dodanie_tyldogwiazdki)
+
+    def kopia(self):
+        kopia = Akord(self.log,
+                      self.tekst_lewy,
+                      self.niedopasowanie,
+                      self.tekst_prawy,
+                      self.dodanie_tyldy,
+                      self.dodanie_gwiazdki,
+                      self.dodanie_tyldogwiazdki)
+        kopia.jest_tylda = self.jest_tylda
+        kopia.jest_gwiazdka = self.jest_gwiazdka
+        kopia.jest_jot = self.jest_jot
+        kopia.jest_ee = self.jest_ee
+        kopia.jest_ii = self.jest_ii
+        kopia.jest_aa = self.jest_aa
+        kopia.jest_uu = self.jest_uu
+        return kopia
+
+    def __add__(self, akord):
+        if slash in f"{self}{akord}":
+            self.log.error(f"Nie mogę połączyć multiakordu ({self} {akord})")
+            return Akord(self.log, "", 999)
+        jest_jot = self.jest_jot
+        if akord.jest_jot:
+            jest_jot = True
+        jest_ee = self.jest_ee
+        if akord.jest_ee:
+            jest_ee = True
+            
+        jest_tylda = self.jest_tylda
+        if akord.jest_tylda:
+            jest_tylda = True
+        dodanie_tyldy = (False, False)
+        if not jest_tylda:
+            if self.dodanie_tyldy[0]:
+                dodanie_tyldy = self.dodanie_tyldy
+            elif akord.dodanie_tyldy[0]:
+                dodanie_tyldy = akord.dodanie_tyldy
+
+        jest_gwiazdka = self.jest_gwiazdka
+        if akord.jest_gwiazdka:
+            jest_gwiazdka = True
+        dodanie_gwiazdki = (False, False)
+        if not jest_gwiazdka:
+            if self.dodanie_gwiazdki[0]:
+                dodanie_gwiazdki = self.dodanie_gwiazdki
+            elif akord.dodanie_gwiazdki[0]:
+                dodanie_gwiazdki = akord.dodanie_gwiazdki
+
+        dodanie_tyldogwiazdki = (False, False)
+        if not jest_gwiazdka and not jest_tylda:
+            if self.dodanie_tyldogwiazdki[0]:
+                dodanie_tyldogwiazdki = self.dodanie_tyldogwiazdki
+            elif akord.dodanie_tyldogwiazdki[0]:
+                dodanie_tyldogwiazdki = akord.dodanie_tyldogwiazdki
+
+        jest_ii = self.jest_ii
+        if akord.jest_ii:
+            jest_ii = True
+        jest_aa = self.jest_aa
+        if akord.jest_aa:
+            jest_aa = True
+        jest_uu = self.jest_uu
+        if akord.jest_uu:
+            jest_uu = True
+        # self.log.info(f"nowy lewy: {self.tekst_lewy}+{akord.tekst_lewy}")
+        tekst_lewy = self.l_tekst() + akord.l_tekst()
+        # self.log.info(f"nowy prawy: {self.tekst_prawy}+{akord.tekst_prawy}")
+        tekst_prawy = self.p_tekst() + akord.p_tekst()
+        wyjściowy = Akord(self.log,
+                          tekst_lewy,
+                          self.niedopasowanie + akord.niedopasowanie,
+                          tekst_prawy,
+                          dodanie_tyldy,
+                          dodanie_gwiazdki,
+                          dodanie_tyldogwiazdki)
+        wyjściowy.jest_jot = jest_jot
+        wyjściowy.jest_ee = jest_ee
+        wyjściowy.jest_tylda = jest_tylda
+        wyjściowy.jest_gwiazdka = jest_gwiazdka
+        wyjściowy.jest_ii = jest_ii
+        wyjściowy.jest_aa = jest_aa
+        wyjściowy.jest_uu = jest_uu
+        return wyjściowy
+
+    def tekst_na_pół(self, tekst):
+        if self.jest_tylda:
+            return (tekst.split(tylda))
+        elif self.jest_gwiazdka:
+            return (tekst.split(gwiazdka))
+        elif self.jest_jot:
+            return (tekst.split(jot))
+        elif self.jest_ee:
+            return (tekst.split(ee))
+        elif self.jest_ii:
+            return (tekst.split(ii))
+        elif self.jest_aa:
+            return (tekst.split(aa))
+        elif self.jest_uu:
+            return (tekst.split(uu))
+        return (tekst, "")
+        
+    def l_tekst(self):
+        return f"{self.tekst_lewy}{jot if self.jest_jot else nic}{ee if self.jest_ee else nic}{tylda if self.jest_tylda else nic}{gwiazdka if self.jest_gwiazdka else nic}"
+
+    def p_tekst(self):
+        return f"{ii if self.jest_ii else nic}{aa if self.jest_aa else nic}{uu if self.jest_uu else nic}{self.tekst_prawy}"
+
+    def __repr__(self):
+        myślnik_wymagany = True
+        if self.jest_tylda or self.jest_gwiazdka or self.jest_jot or self.jest_ee or self.jest_ii or self.jest_aa or self.jest_uu:
+            myślnik_wymagany = False
+        return f"{self.l_tekst()}{myślnik if myślnik_wymagany else nic}{self.p_tekst()}"

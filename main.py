@@ -3,8 +3,9 @@ from logowanie import Logger
 from generator import Generator
 from jezyk import Język, Słowo
 from klawiatura import Klawiatura
-from pomocnicy import Czytacz, Pisarz
+from pomocnicy import Czytacz, Pisarz, SłownikDomyślny
 import argparse
+
 import collections
 import time
 
@@ -23,7 +24,7 @@ def main():
                         help='słowa do utworzenia słownika podzielone na sy=la=by')
     parser.add_argument('--baza', default='wyniki/baza-0.json',
                         help='początkowy plik słownika w formacie JSON')
-    parser.add_argument('--max_niedopasowanie', default='10',
+    parser.add_argument('--max_niedopasowanie', default='2',
                         help='Parametr generatora, 0 - tylko słowa idealnie pasujące, więcej niż 0 - słowa z brakującymi literami w akordzie')
     parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja.py',
                         help='plik konfiguracji generatora')
@@ -48,7 +49,9 @@ def main():
         słownik = collections.defaultdict(dict)
         linie_bazy = 0
 
-    istniejące_słowa = słownik.keys()  # TODO: uaktualnianie istniejące_słowa
+    istniejące_słowa = set()
+    for słowo in słownik.keys():
+        istniejące_słowa.add(słowo)  # TODO: uaktualnianie istniejące_słowa
     (sylaby_słowa, ile_słów_wczytano) = czytacz.wczytaj_słowa(log, args.slowa)
     język = Język(log, konfiguracja.KonfiguracjaJęzyka)
     klawiatura = Klawiatura(log, konfiguracja.KonfiguracjaKlawiatury, język)
@@ -56,9 +59,85 @@ def main():
     numer_generacji = 0
     loguj_postęp_co = 10000
     czas_start = time.time()
-    niepowodzenia = []
-
     (przedrostki, ile_przedrostków_wczytano) = czytacz.wczytaj_słowa(log, args.przedrostki)
+
+
+    log.info(f"Generuję klawisze dla liter alfabetu...")
+    for litera in konfiguracja.KonfiguracjaJęzyka.samogłoski + konfiguracja.KonfiguracjaJęzyka.spółgłoski:
+        if litera in istniejące_słowa or litera.isnumeric():
+            continue
+        czy_klejone = True
+        if litera in konfiguracja.KonfiguracjaJęzyka.jednoliterowe_wyrazy:
+            czy_klejone = False
+        czy_przedrostek = False
+        if litera in przedrostki:
+            czy_przedrostek = True
+        słowo = Słowo(litera,
+                      jest_przedrostkiem=czy_przedrostek,
+                      klejone=czy_klejone)
+        akordy = generator.wygeneruj_akordy(litera,
+                                            limit_niedopasowania=0,
+                                            limit_prób=10)
+        dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
+        udało_się = len(dodane) > 0
+        if not udało_się:
+            nowe_akordy = generator.dodaj_znaki_specjalne_do_akordów(akordy,
+                                                                     limit_niedopasowania=2,
+                                                                     limit_prób=10)
+            dodane = generator.dodaj_akordy_do_słownika(słowo, nowe_akordy)
+            udało_się = len(dodane) > 0
+            if not udało_się:
+                log.error(f"Nie dodałem litery '{litera}'")
+            else:
+                istniejące_słowa.add(litera)
+        else:
+            istniejące_słowa.add(litera)
+    niepowodzenia = []
+    niepowodzenia_przedrostków = []
+        
+    log.info(f"Wczytałem sylaby dla {ile_słów_wczytano} słów, generuję klawisze...")
+    for (litery, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
+        if litery in istniejące_słowa or litery.isnumeric():
+            continue
+        czy_przedrostek = False
+        if litery in przedrostki:
+            czy_przedrostek = True
+        słowo = Słowo(litery,
+                      jest_przedrostkiem=czy_przedrostek)
+
+        akordy = generator.wygeneruj_akordy(litery,
+                                            limit_niedopasowania=0,
+                                            limit_prób=5)
+        dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
+        udało_się = len(dodane) > 0
+        if not udało_się:
+            akordy = generator.wygeneruj_akordy(litery,
+                                                limit_niedopasowania=0,
+                                                limit_prób=5,
+                                                z_przedrostkiem=True)
+            dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
+            udało_się = len(dodane) > 0
+            if not udało_się:
+                nowe_akordy = generator.dodaj_znaki_specjalne_do_akordów(akordy,
+                                                                         limit_niedopasowania=2,
+                                                                         limit_prób=5)
+                dodane = generator.dodaj_akordy_do_słownika(słowo, nowe_akordy)
+                udało_się = len(dodane) > 0
+                if not udało_się:
+                    niepowodzenia.append((litery, frekwencja))
+                else:
+                    istniejące_słowa.add(litery)
+            else:
+                istniejące_słowa.add(litery)
+        else:
+            istniejące_słowa.add(litery)
+        numer_generacji += 1        
+        if numer_generacji % loguj_postęp_co == 0:
+            log.info(f"{numer_generacji}: {litery} - wygenerowano")
+        if numer_generacji % 100 == 0:
+            log.debug(f"{numer_generacji}: {litery} - wygenerowano")
+
+
     log.info(f"Wczytałem {ile_przedrostków_wczytano} przedrostków, generuję...")
     for przedrostek in przedrostki:
         if przedrostek in istniejące_słowa or przedrostek.isnumeric():
@@ -68,7 +147,8 @@ def main():
                                             limit_niedopasowania=9,
                                             limit_prób=10,
                                             z_gwiazdką=False)
-        # log.info(f"Akordy: {akordy}")
+        if przedrostek == "by":
+            log.error(f"prz {przedrostek}: {akordy}")
         dodane = generator.dodaj_akordy_do_słownika(słowo,
                                                     akordy)
         udało_się = len(dodane) > 0
@@ -78,10 +158,14 @@ def main():
             dodane = generator.dodaj_akordy_do_słownika(słowo,
                                                         specjalne_akordy)
             if not len(dodane) > 0:
-                niepowodzenia.append((przedrostek, 10))
+                niepowodzenia_przedrostków.append((przedrostek, 10))
+            else:
+                istniejące_słowa.add(przedrostek)
+        else:
+            istniejące_słowa.add(przedrostek)
         numer_generacji += 1
-    niepowodzenia_przedrostki = []
-    for przedrostek, freq in niepowodzenia:
+    niepowodzenia_przedrostków_nowe = []
+    for przedrostek, freq in niepowodzenia_przedrostków:
         akordy = generator.wygeneruj_akordy(przedrostek,
                                             limit_niedopasowania=7,
                                             limit_prób=10,
@@ -91,39 +175,15 @@ def main():
                                                     akordy)
         if len(dodane) == 0:
             log.error(f"Nie dodano przedrostka {przedrostek}")
-            niepowodzenia_przedrostki.append((przedrostek, freq))
+            niepowodzenia_przedrostków_nowe.append((przedrostek, freq))
+        else:
+            istniejące_słowa.add(przedrostek)
+    niepowodzenia_przedrostków = niepowodzenia_przedrostków_nowe
 
-
-    log.info(f"Wczytałem sylaby dla {ile_słów_wczytano} słów, generuję klawisze...")
-    niepowodzenia = []
-    istniejące_słowa = słownik.keys()
-    for (litery, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
-        if litery in istniejące_słowa or litery.isnumeric():
-            continue
-        słowo = Słowo(litery)
-
-        akordy = generator.wygeneruj_akordy(litery,
-                                            limit_niedopasowania=0,#max_niedopasowanie,
-                                            limit_prób=10)
-        dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
-        udało_się = len(dodane) > 0
-        if not udało_się:
-            akordy = generator.wygeneruj_akordy(litery,
-                                                limit_niedopasowania=0,
-                                                limit_prób=10,
-                                                z_przedrostkiem=True)
-            dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
-            udało_się = len(dodane) > 0
-            if not udało_się:
-                niepowodzenia.append((litery, frekwencja))
-        numer_generacji += 1        
-        if numer_generacji % loguj_postęp_co == 0:
-            log.info(f"{numer_generacji}: {litery} - wygenerowano")
-        if numer_generacji % 100 == 0:
-            log.debug(f"{numer_generacji}: {litery} - wygenerowano")
+    ## Teraz z przedrostkami
     for limit_niedopasowania in range(max_niedopasowanie):
         nowe_niepowodzenia = []
-        istniejące_słowa = słownik.keys()
+        # istniejące_słowa = słownik.keys()
 
         for (litery, frekwencja) in niepowodzenia:
             if litery in istniejące_słowa or litery.isnumeric():
@@ -142,6 +202,10 @@ def main():
                 udało_się = len(dodane) > 0
                 if not udało_się:
                     nowe_niepowodzenia.append((litery, frekwencja))
+                else:
+                    istniejące_słowa.add(litery)
+            else:
+                istniejące_słowa.add(litery)
             numer_generacji += 1        
             if numer_generacji % loguj_postęp_co == 0:
                 log.info(f"{numer_generacji}: {słowo} - wygenerowano")
@@ -218,6 +282,7 @@ def main():
 
     log.info(f"Dodano {len(słownik) - linie_bazy} słów w {time.time() - czas_start} sekund.")
     log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia)} słów.")
+    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_przedrostków)} przedrostków.")
 
     log.info("Słownik utworzony, zapisuję...")
     pisarz = Pisarz(args.slownik)

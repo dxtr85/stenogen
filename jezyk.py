@@ -223,10 +223,20 @@ class Język:
 
 class Słowo:
     def __init__(self, litery, jest_przedrostkiem=False, klejone=False):
-        self.litery = litery
-        self.isnumeric = litery.isnumeric()
         self.jest_przedrostkiem=jest_przedrostkiem
         self.klejone=klejone
+        self._zainicjalizuj_słowo(litery)
+
+    def _zainicjalizuj_słowo(self, litery):
+        if litery.startswith("{}"):
+            self.jest_przedrostkiem=True
+            self.litery = litery[3:-1]
+        elif litery.startswith("{&"):
+            self.klejone=True
+            self.litery = litery[2:-1]
+        else:
+            self.litery = litery
+        self.isnumeric = self.litery.isnumeric()
 
     def ustaw_klejone(self, ustawienie=True):
         self.klejone=ustawienie

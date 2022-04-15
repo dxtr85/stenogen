@@ -1,4 +1,5 @@
-from klawiatura import Klawiatura, RękaLewa, RękaPrawa
+from klawiatura import Klawiatura, RękaLewa, RękaPrawa, Akord
+from jezyk import Słowo
 from collections import defaultdict
 
 tylda = "~"
@@ -11,7 +12,7 @@ aa = "A"
 uu = "U"
 nic = ""
 tyldogwiazdka = "~*"
-dwa_falsy = (False, False)
+slash = "/"
 
 class Generator():
     def __init__(self, log, język, klawiatura, konfiguracja, słownik_ostateczny, sylaby_słowa):
@@ -30,41 +31,62 @@ class Generator():
         self._zainicjalizuj_kombinacje()
         self.loguj_postęp_co = 10000 # Będzie log po tylu wygenerowanych słowach
         self.postęp = 0
-        self.minimum_kombinacji_per_słowo = 2
+        self.minimum_kombinacji_per_słowo = 1
         self.niepowodzenia = []
         self.analizowane_fonemy = defaultdict(lambda: 0)
         self.analizowane_końcówki = defaultdict(lambda: 0)
+        self.dbg = ["użyć"]
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info("Inicjalizuję bazę generatora")
         for (tekst, kombinacje) in self.słownik.items():
             for kombinacja in kombinacje.keys():
-                self.kombinacje[kombinacja] = tekst
+                self.kombinacje[kombinacja] = Słowo(tekst)
         self.log.info("Baza zainicjalizowana w pamięci")
 
-    def _dopasuj_kombinacje(self, słowo, kombinacje):
-        tekst = słowo.litery
-        kombinacje_dodane = []
-        for kombinacja in kombinacje:
-            niedopasowanie = kombinacja[1]
+    def _dopasuj_akordy(self, słowo, akordy):
+        if słowo.litery in self.dbg:
+            self.log.info(f"Dopasowuje dla {słowo}, {akordy}")
+        akordy_dodane = []
+        for akord in akordy:
+            if isinstance(akord, list):
+                znaki = ""
+                dł_ciągu = len(akord)
+                for i in range(dł_ciągu):
+                    znaki +=f"{akord[i]}"
+                    if i < dł_ciągu -1:
+                        znaki +="/"
+                niedopasowanie = akord[-1].niedopasowanie
+            else:
+                niedopasowanie = akord.niedopasowanie
+                znaki = f"{akord}"
+            if słowo.litery in self.dbg:
+                self.log.info(f"Niedo dla {akord}, {niedopasowanie}")
+
             obecny_właściciel = None
 
-            if kombinacja[0][0] not in self.kombinacje.keys():
-                self.kombinacje[kombinacja[0][0]] = słowo
-                self.słownik[tekst][kombinacja[0][0]] = niedopasowanie
+            if znaki not in self.kombinacje.keys():
+                if słowo.litery in self.dbg:
+                    self.log.info(f"Nie ma, dodaje")
+                self.kombinacje[znaki] = słowo
+                self.słownik[słowo.litery][znaki] = niedopasowanie
+                if słowo.litery in self.dbg:
+                    self.log.info(f"Po dodaniu: {self.słownik[słowo.litery]}, {self.kombinacje[znaki]}")
 
-                kombinacje_dodane.append(kombinacja)
+                akordy_dodane.append(akord)
             else:
-                obecny_właściciel = self.kombinacje[kombinacja[0][0]].litery
-                if obecny_właściciel == tekst:
-                    kombinacje_dodane.append(kombinacja)
+                if słowo.litery in self.dbg:
+                    self.log.info(f"{znaki} już jest w słowniku")
+                obecny_właściciel = self.kombinacje[znaki].litery
+                if obecny_właściciel == słowo.litery:
+                    akordy_dodane.append(akord)
                     continue
                 kombinacje_właściciela = self.słownik[obecny_właściciel]
                 ilość_kombinacji_właściciela = len(kombinacje_właściciela.keys())
                 if ilość_kombinacji_właściciela <= self.minimum_kombinacji_per_słowo:
                     continue
                 else:
-                    obecne_niedopasowanie = kombinacje_właściciela[kombinacja[0][0]]
+                    obecne_niedopasowanie = kombinacje_właściciela[znaki]
                     #  Nie zabieramy kombinacji jeśli ich dopasowanie jest takie samo
                     # if obecne_niedopasowanie <= niedopasowanie:
                     #     continue
@@ -75,15 +97,15 @@ class Generator():
                             minimalne_niedopasowanie_u_właściciela = obce_niedopasowanie
                             break
                         elif obce_niedopasowanie == minimalne_niedopasowanie_u_właściciela and\
-                             obca_kombinacja != kombinacja[0][0]:
+                             obca_kombinacja != znaki:
                             minimalne_niedopasowanie_u_właściciela = obce_niedopasowanie -1
                             break
                     if obecne_niedopasowanie > minimalne_niedopasowanie_u_właściciela:
-                        kombinacje_właściciela.pop(kombinacja[0][0])
-                        self.słownik[tekst][kombinacja[0][0]] = niedopasowanie
-                        self.kombinacje[kombinacja[0][0]] = słowo
-                        kombinacje_dodane.append(kombinacja)
-        return kombinacje_dodane
+                        kombinacje_właściciela.pop(znaki)
+                        self.słownik[słowo.litery][znaki] = niedopasowanie
+                        self.kombinacje[znaki] = słowo
+                        akordy_dodane.append(akord)
+        return akordy_dodane
                 
     def wygeneruj_akordy(self, słowo,
                          limit_niedopasowania,
@@ -91,7 +113,8 @@ class Generator():
                          bez_środka=False,
                          z_przedrostkiem=False,
                          z_gwiazdką=False):
-        # self.log.debug(f"Szukam dla: {słowo}")
+        # if słowo in self.dbg:
+        self.log.debug(f"Szukam dla: {słowo}")
         self.postęp += 1
 
         # Dla 'w', 'z'
@@ -106,49 +129,84 @@ class Generator():
                 sylaby = self.język.sylabizuj(słowo)
                 # raise KeyError(f"Nie znam sylab, {e}")
         if z_przedrostkiem:
+            akordy = []
             (przedrostek, sylaby) = self.znajdź_przedrostek_dla_sylab(sylaby)
+            self.log.debug(f"Z przedrostkiem {przedrostek}")
             podsłowo = ''.join(sylaby)
             if podsłowo in self.słownik.keys():
-                akordy = []
-                kombinacje = self.kombinacje_dla_liter(podsłowo)
-                for (kombinacja, niedopasowanie) in kombinacje:
+                # self.log.debug(f"Z podsłowem {podsłowo}")
+                akordy_podsłowa = self.akordy_dla_liter(podsłowo)
+                # self.log.debug(f"Dostałem podakordy: {akordy_podsłowa}")
+                for akord in akordy_podsłowa:
                     # self.log.info(f"AKtualizuję {kombinacja}")
-                    akordy.append(((kombinacja, dwa_falsy, dwa_falsy, dwa_falsy), niedopasowanie))
-                    słowo = self.kombinacje[kombinacja]
+                    akordy.append(akord)  ## TODO
+                    # if isinstance(akord, list):
+                    #     multi_akord = ""
+                    #     dł_ciągu = len(akord)
+                    #     for i in dł_ciągu:
+                    #         multi_akord +=f"{akord[i]}"
+                    #         if i < dł_ciągu -1:
+                    #             multi_akord +="/"
+                    #     słowo = self.kombinacje[f"{multi_akord}"]
+                    # else:
+                    #     słowo = self.kombinacje[f"{akord}"]
                     # if słowo.klejone:
-                    #     self.log.info(f"Już klejone, niemaco")
-                    słowo.ustaw_klejone()  # TODO: to można zrobić tylko raz
+                # self.log.info(f"ako pod {podsłowo}: {akordy_podsłowa[0]}")
+                # self.log.info(f"w słowniku: {self.słownik[podsłowo]}")
+                # self.log.info(f"{podsłowo} ma akordy: {akordy_podsłowa}")
+                # self.log.info(f"ako pod: {akordy_podsłowa} dla {słowo}({przedrostek}/{podsłowo})")
+                if isinstance(akordy_podsłowa[0], list):
+                    litery = ""
+                    for podsłowo in akordy_podsłowa[0]:
+                        litery += f"{podsłowo}/"
+                    self.kombinacje[f"{litery[:-1]}"].ustaw_klejone()  # TODO: to można zrobić tylko raz
+                else:
+                    self.kombinacje[f"{akordy_podsłowa[0]}"].ustaw_klejone()  # TODO: to można zrobić tylko raz
                     
                 # TODO uaktualnij obiekt Słowo dla podsłowo
             else:
+                # self.log.debug(f"bez podsłowa")
                 akordy = self.klawiatura.wygeneruj_akordy(słowo,
                                                         sylaby,
                                                         limit_niedopasowania,
                                                         limit_prób, bez_środka,
                                                         z_gwiazdką)
         else:
+            self.log.debug(f"bez przedrostka")
             akordy = self.klawiatura.wygeneruj_akordy(słowo,
                                                       sylaby,
                                                       limit_niedopasowania,
                                                       limit_prób, bez_środka,
                                                       z_gwiazdką)
+            if słowo in self.dbg:
+                self.log.info(f"Bez przedrostka {słowo}: {akordy}")
 
         if z_przedrostkiem and przedrostek:
             nowe_akordy = []
-            for akord in akordy:
-                kombinacje_przedrostka = self.kombinacje_dla_liter(przedrostek)
+            for wygenerowany_akord in akordy:
+                akordy_przedrostka = self.akordy_dla_liter(przedrostek)
                 ## TODO: przypadek gdy więcej kombinacji ma takie samo niedopasowanie
                 ## wtedy jedna z tych kombinacji może zostać zabrana do innego słowa
                 ile_przedrostkow_uwzględnić = min(self.minimum_kombinacji_per_słowo,\
-                                                  len(kombinacje_przedrostka))
+                                                  len(akordy_przedrostka))
                 for i in range(ile_przedrostkow_uwzględnić):
-                    (kombinacja_przedrostka, niedopasowanie) = kombinacje_przedrostka[i]
-                    (stara_kombinacja, t, g, tg)  = akord[0]
-                    kombinacja_łączona = kombinacja_przedrostka + "/" + stara_kombinacja
-                    self.log.debug(f"zamieniam {stara_kombinacja} na {kombinacja_łączona}")
-                    nowy_akord = ((kombinacja_łączona, t, g, tg), akord[1] + niedopasowanie)
-                    nowe_akordy.append(nowy_akord)
+                    akord_przedrostka = akordy_przedrostka[i]
+                    multi_akord = akord_przedrostka
+                    if isinstance(akord_przedrostka, list):
+                        if isinstance(wygenerowany_akord, list):
+                            multi_akord += wygenerowany_akord
+                        else:
+                            multi_akord.append(wygenerowany_akord)
+                    else:
+                        if isinstance(wygenerowany_akord, list):
+                            multi_akord = [multi_akord]
+                            multi_akord += wygenerowany_akord
+                        else:
+                            multi_akord = [multi_akord, wygenerowany_akord]
+                    nowe_akordy.append(multi_akord)
             return nowe_akordy
+        if słowo in self.dbg:
+            self.log.info(f"zwracam dla {słowo}: {akordy}")
         return akordy
 
     def dodaj_znaki_specjalne_do_akordów(self,
@@ -156,17 +214,25 @@ class Generator():
                                          limit_niedopasowania,
                                          limit_prób=2):
         nowe_kombinacje = []
-        for kombinacja in akordy:
-            if kombinacja[1] < limit_niedopasowania:
-                # self.log.debug(f"Dodaję po specjalne: {kombinacja}")
-                nowe_pkomb = self.klawiatura.dodaj_znaki_specjalne_do_kombinacji(kombinacja)
+        for akord in akordy:
+            if isinstance(akord, list):
+                niedopasowanie = akord[-1].niedopasowanie
+            else:
+                niedopasowanie = akord.niedopasowanie
+            if niedopasowanie < limit_niedopasowania:
+                # self.log.info(f"Dodaję po specjalne: {kombinacja}")
+                nowe_pkomb = self.klawiatura.dodaj_znaki_specjalne_do_akordu(akord)
                 nowe_kombinacje += nowe_pkomb
         return nowe_kombinacje
 
     def dodaj_akordy_do_słownika(self, słowo, akordy):
-        # self.log.debug(f"Dostałem akordy: {akordy}")
+        if słowo.litery in self.dbg:
+            self.log.debug(f"Dostałem akordy: {akordy}")
         dodane = []
-        dodane = self._dopasuj_kombinacje(słowo, akordy)
+        if not akordy:
+            self.log.error(f"Brak akordów dla {słowo} ({akordy})")
+            return dodane
+        dodane = self._dopasuj_akordy(słowo, akordy)
         if słowo.jest_przedrostkiem and len(dodane) > 0:
             self.przedrostki.add(słowo.litery)
         return dodane
@@ -229,9 +295,20 @@ class Generator():
                 indeks_pozostałych_sylab = i + 1
         return (najdłuższy_przedrostek, sylaby[indeks_pozostałych_sylab:])
 
-    def kombinacje_dla_liter(self, litery):
-        kombinacje = []
+    def akordy_dla_liter(self, litery):
+        akordy = []
         # self.log.info(f"jakie są: {self.słownik[litery]}")
         for (kombinacja, niedopasowanie) in self.słownik[litery].items():
-            kombinacje.append((kombinacja, niedopasowanie))
-        return kombinacje
+            # TODO: a co jeśli mamy akord dwuczłonowy w słowniku?
+            if slash in kombinacja:
+                # self.log.debug(f"jest slash")
+                podakordy = []
+                for podkombinacja in kombinacja.split(slash):
+                    podakordy.append(Akord(self.log, podkombinacja, 0))
+                podakordy[-1].niedopasowanie = niedopasowanie
+                akordy.append(podakordy)
+            else:
+                # self.log.debug(f"bez slasha")
+                akordy.append(Akord(self.log, kombinacja, niedopasowanie))
+        # self.log.info(f"jakie zwracam: {akordy}")
+        return akordy

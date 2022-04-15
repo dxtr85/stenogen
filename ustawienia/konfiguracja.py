@@ -2,8 +2,10 @@ class KonfiguracjaGeneratora:
     pass
 
 class KonfiguracjaJęzyka:
+    spółgłoski = ['b', 'c', 'ć', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'p', 'q', 'r', 's', 'ś', 't', 'v', 'w', 'x', 'z', 'ź', 'ż']
     nic = ""
     samogłoski = ['a', 'ą', 'e', 'ę', 'i', 'o', 'ó', 'u', 'y']
+    jednoliterowe_wyrazy  = ['a', 'i', 'o', 'u', 'w', 'z']
     # {"Fonem": ("Lewa ręka", "Prawa ręka")}
     fonemy_spółgłoskowe = {"b": ("PV", "KN"),
                            "bi": ("PVJ", "KNC"),
@@ -73,7 +75,7 @@ class KonfiguracjaJęzyka:
 
     # {"Fonem": ("Środek", "Prawa ręka")}
     fonemy_samogłoskowe = {"a": ("A", "B"),
-                           "ą": ("~O", "BC"),
+                           "ą": ("~A", "BC"),
                            "e": ("E", "Y"),
                            "ę": ("E~", "YO"),
                            "i": ("I", "C"),
