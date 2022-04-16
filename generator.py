@@ -35,7 +35,8 @@ class Generator():
         self.niepowodzenia = []
         self.analizowane_fonemy = defaultdict(lambda: 0)
         self.analizowane_końcówki = defaultdict(lambda: 0)
-        self.dbg = ["użyć"]
+        self.modyfikator = Akord(self.log, "~", 0)
+        self.dbg = []
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info("Inicjalizuję bazę generatora")
@@ -164,13 +165,13 @@ class Generator():
                     self.kombinacje[f"{akordy_podsłowa[0]}"].ustaw_klejone()  # TODO: to można zrobić tylko raz
                     
                 # TODO uaktualnij obiekt Słowo dla podsłowo
-            else:
+            # else:
                 # self.log.debug(f"bez podsłowa")
-                akordy = self.klawiatura.wygeneruj_akordy(słowo,
-                                                        sylaby,
-                                                        limit_niedopasowania,
-                                                        limit_prób, bez_środka,
-                                                        z_gwiazdką)
+            akordy += self.klawiatura.wygeneruj_akordy(słowo,
+                                                       sylaby,
+                                                       limit_niedopasowania,
+                                                       limit_prób, bez_środka,
+                                                       z_gwiazdką)
         else:
             self.log.debug(f"bez przedrostka")
             akordy = self.klawiatura.wygeneruj_akordy(słowo,
@@ -209,6 +210,17 @@ class Generator():
             self.log.info(f"zwracam dla {słowo}: {akordy}")
         return akordy
 
+    def dodaj_modyfikator(self, akordy):
+        nowe_akordy = []
+        for akord in akordy:
+            if isinstance(akord, list):
+                akord.append(self.modyfikator)
+            else:
+                akord = [akord, self.modyfikator]
+            nowe_akordy.append(akord)
+        return nowe_akordy
+
+        
     def dodaj_znaki_specjalne_do_akordów(self,
                                          akordy,
                                          limit_niedopasowania,
