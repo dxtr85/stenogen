@@ -118,7 +118,7 @@ class Pisarz:
         with open(self.słownik_sortowany, 'w', buffering=1024000) as plik_wynikowy:
             plik_wynikowy.write('{\n')
             for klawisze, tekst in słownik.items():
-                plik_wynikowy.write(f'{nowa_linia}"{klawisze}": "{tekst}"')
+                plik_wynikowy.write(f'{nowa_linia} "{klawisze}": "{tekst}"')
                 nowa_linia = przecinek
             plik_wynikowy.write('}\n')
 

@@ -26,7 +26,7 @@ class Klawiatura:
         self.ręka_prawa = RękaPrawa(log, konfiguracja)
         # self.środek = Kciuki(log, konfiguracja)
         self.rozdzielacz = SłownikDomyślny(lambda x: dzielniki_dla_słowa_o_długości(x))
-        self.dbg = [["ju", "dze", "nie"], ["wró", "że", "nie"], ["jed", "no", "ko", "mór", "ko", "wiec"]]
+        self.dbg = []#, ["wró", "że", "nie"], ["jed", "no", "ko", "mór", "ko", "wiec"], ["a", "neg", "do", "tycz", "ny"]]
 
     def wygeneruj_akordy(self, słowo,
                          sylaby,
@@ -71,7 +71,8 @@ class Klawiatura:
 
             akord = self.akord_bez_inwersji(kombinacje_do_odjęcia_lewe,
                                             kombinacja_środkowa,
-                                            kombinacje_do_odjęcia_prawe)
+                                            kombinacje_do_odjęcia_prawe,
+                                            waga_słowa)# + waga_środka)
             if sylaby in self.dbg:
                 self.log.debug(f"bez inversji: {sylaby} ako:{akord} {akord.niedopasowanie}")
             # niedopasowanie = waga_słowa - waga_środka - waga_akordu
@@ -87,21 +88,20 @@ class Klawiatura:
             # self.log.debug(f"Bez inv: {akordy}")
             if limit_prób > 0:
                 akordy += self.akordy_z_inwersją(kombinacje_do_odjęcia_lewe,
-                                                kombinacja_środkowa,
-                                                kombinacje_do_odjęcia_prawe,
-                                                waga_słowa,
-                                                waga_środka,
-                                                limit_niedopasowania,
-                                                limit_prób)
+                                                 kombinacja_środkowa,
+                                                 kombinacje_do_odjęcia_prawe,
+                                                 waga_słowa,# + waga_środka,
+                                                 limit_niedopasowania,
+                                                 limit_prób)
             if sylaby in self.dbg:
                 self.log.debug(f"z inversjią: {sylaby} ako:{akordy}")
             # self.log.debug(f"Z inv: {akordy}")
             self.zresetuj_klawiaturę()
         return akordy
 
-    def akord_bez_inwersji(self, od_lewe, środek, od_prawe):
-        self.log.debug(f"W bez inw: {od_lewe}, {środek}, {od_prawe}")
-        self.log.debug(f"waga na rękach: {self.ręka_lewa.waga()}, {self.ręka_prawa.waga()}")
+    def akord_bez_inwersji(self, od_lewe, środek, od_prawe, waga_słowa):
+        # self.log.debug(f"W bez inw: {od_lewe}, {środek}, {od_prawe}")
+        # self.log.debug(f"waga na rękach: {self.ręka_lewa.waga()}, {self.ręka_prawa.waga()} {len(środek)}")
         
         komb_lewe = []
         komb_prawe = []
@@ -120,9 +120,7 @@ class Klawiatura:
             prawa_do_odj = self.kombinacje[idx_kombinacji]
             self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
             komb_prawe.append(idx_kombinacji)
-        waga = self.waga_na_klawiaturze()
-        self.log.debug(f"waga po odjęciu: {waga} {środek} w: {len(środek)}")
-        akord = self.połącz_kombinacje(waga, środek) ## TODO: może waga_środka=0?
+        akord = self.połącz_kombinacje(waga_słowa, środek) ## TODO: może waga_środka=0?
         # self.log.debug(f"Ko0 do aktywacji: {komb_lewe}")
         for idx_kombinacji in komb_lewe:
             lewa_do_dod = self.kombinacje[idx_kombinacji]
@@ -130,12 +128,18 @@ class Klawiatura:
         for idx_kombinacji in komb_prawe:
             prawa_do_dod = self.kombinacje[idx_kombinacji]
             self.ręka_prawa.aktywuj_kombinację(prawa_do_dod)
+        # self.log.debug(f"wyjście waga na rękach: {self.ręka_lewa.waga()}, {self.ręka_prawa.waga()} {len(środek)}")
         return akord
 
     def akordy_z_inwersją(self, od_lewe, środek, od_prawe,
-                          waga_słowa, waga_środka,
+                          waga_słowa,
                           limit_niedopasowania, limit_prób):
-        # self.log.debug(f"z inw, limit: {limit_prób}")
+        # self.log.debug(f"z inw, prób: {limit_prób}")
+        # self.log.debug(f"z inw, limit niedo: {limit_niedopasowania}")
+        # self.log.debug(f"lewe do odj: {od_lewe}")
+        # self.log.debug(f"śr: {środek}")
+        # self.log.debug(f"prawe do odj: {od_prawe}")
+        # self.log.debug(f"wag: {waga_słowa}")
         dł_lewe = len(od_lewe)
         dł_prawe = len(od_prawe)
         akordy = []
@@ -145,6 +149,7 @@ class Klawiatura:
         następny_do_pominięcia_prawy = 0
 
         max_idx = len(self.kombinacje) - 1
+        # self.log.debug(f"Przed pętlą: {self.połącz_kombinacje(waga_słowa, środek)}")
         while limit_prób > 0:
             komb_lewe = []
             komb_prawe = []
@@ -154,7 +159,7 @@ class Klawiatura:
                 for id in od_prawe:
                     if id > max_idx:
                         self.log.error(f"ZIP Idx za duży: {id} (w {od_prawe}), dostępne: [0..{max_idx}]")
-                        self.log.debug(f"Kombos: {self.kombinacje}")
+                        # self.log.debug(f"Kombos: {self.kombinacje}")
                         continue
 
                     prawa_do_odj = self.kombinacje[id]
@@ -162,21 +167,22 @@ class Klawiatura:
                     komb_prawe.append(prawa_do_odj)
                 # A z lewej strony zostawiamy jedną malejącą kombinację, aby skorzystać z inwersji
                 if następny_do_pominięcia_lewy >= dł_lewe:
+                    # self.log.debug("Więcej lewych nie pomijam")
                     wszystkie_lewe_odjęte = True
                 else:
                     for idx in range(dł_lewe):
                         if idx == następny_do_pominięcia_lewy:
+                            # self.log.debug(f"kombo {idx} pomijam")
                             continue
                         elif od_lewe[idx] > max_idx:
                             self.log.error(f"ZIL Idx za duży: {od_lewe[idx]} (w {od_lewe}), dostępne: {self.kombinacje}")
                             continue
                         lewa_do_odj = self.kombinacje[od_lewe[idx]]
+                        # self.log.debug(f"Odejmuję {lewa_do_odj}")
                         self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
                         komb_lewe.append(lewa_do_odj)
                     akord = self.połącz_kombinacje(waga_słowa, środek)
-                    # waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
-                    # niedopasowanie = waga_słowa - waga_środka - waga_akordu
-                    # self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {niedopasowanie}(waga ako: {waga_akordu})")
+                    # self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {akord.niedopasowanie}")
                     if akord.niedopasowanie <= limit_niedopasowania:
                         # self.log.debug(f"Dodaję: {akord}")
                         akordy.append(akord)#, waga_akordu))
@@ -194,6 +200,7 @@ class Klawiatura:
 
             elif not wszystkie_prawe_odjęte:
                 # A tu na odwrót: wywalamy wszystkie malejące lewe kombinacje
+                # self.log.debug("i prawa")
                 for id in od_lewe:
                     if id > max_idx:
                         self.log.error(f"EZIL Index za duży: {id} (w {od_lewe}), dostępne: {self.kombinacje}")
@@ -220,6 +227,7 @@ class Klawiatura:
                     # waga_akordu = self.ręka_lewa.waga() + self.ręka_prawa.waga()
                     # niedopasowanie = waga_słowa - waga_środka - waga_akordu
                     if akord.niedopasowanie <= limit_niedopasowania:
+                        # self.log.debug(f"Dodaję: {akord}")
                         akordy.append(akord)
                     for kombo in komb_prawe:
                         self.ręka_prawa.aktywuj_kombinację(kombo)
@@ -380,6 +388,7 @@ class Klawiatura:
             return self.język.fonemy_spółgłoskowe[fonem][0]
 
     def połącz_kombinacje(self, waga_słowa, kombinacja_środkowa): #, ręka_lewa, kombinacja_środkowa, ręka_prawa):
+        # self.log.debug(f"{waga_słowa} łącze {kombinacja_środkowa}")
         akord_lewy = self.ręka_lewa.akord_lewy()
         akord_środkowy = Akord(self.log, kombinacja_środkowa) #, len(kombinacja_środkowa))  ## TODO waga środka
         # (środek_l, środek_p) = self.środek.akordy_środka()
@@ -388,7 +397,8 @@ class Klawiatura:
         połączony_akord = akord_lewy + akord_środkowy
         # self.log.info(f"Łączę LS+P: {połączony_akord} + {akord_prawy}")
         wyjściowy_akord = połączony_akord + akord_prawy
-        wyjściowy_akord.niedopasowanie = waga_słowa - self.waga_na_klawiaturze()
+        # self.log.debug(f"na klawie: {self.waga_na_klawiaturze()}")
+        wyjściowy_akord.niedopasowanie = waga_słowa - self.waga_na_klawiaturze() - len(kombinacja_środkowa)
         return wyjściowy_akord
         
         # tylda_lewa = tylda in akord_lewy.tekst
@@ -952,7 +962,7 @@ class Palec:
                     klawisz_do_deaktywacji = klawisz
 
         if not klawisz_do_deaktywacji:
-            self.log.error(f"Nie wiem jaki klawisz deaktywować: {[k for k in self.klawisze.values() if k.waga>0]}")
+            self.log.error(f"Nie wiem jaki klawisz deaktywować: {[k.znak for k in self.klawisze.values() if k.waga>0]}")
             return tekst  # To się nie powinno zdarzyć
         else:
             # klawisz_do_deaktywacji.waga = 0 # Kombinacje stają się niekompletne! (OK?)

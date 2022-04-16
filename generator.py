@@ -62,22 +62,22 @@ class Generator():
                 niedopasowanie = akord.niedopasowanie
                 znaki = f"{akord}"
             if słowo.litery in self.dbg:
-                self.log.info(f"Niedo dla {akord}, {niedopasowanie}")
+                self.log.debug(f"Niedo dla {akord}, {niedopasowanie}")
 
             obecny_właściciel = None
 
             if znaki not in self.kombinacje.keys():
                 if słowo.litery in self.dbg:
-                    self.log.info(f"Nie ma, dodaje")
+                    self.log.debug(f"Nie ma, dodaje")
                 self.kombinacje[znaki] = słowo
                 self.słownik[słowo.litery][znaki] = niedopasowanie
                 if słowo.litery in self.dbg:
-                    self.log.info(f"Po dodaniu: {self.słownik[słowo.litery]}, {self.kombinacje[znaki]}")
+                    self.log.debug(f"Po dodaniu: {self.słownik[słowo.litery]}, {self.kombinacje[znaki]}")
 
                 akordy_dodane.append(akord)
             else:
                 if słowo.litery in self.dbg:
-                    self.log.info(f"{znaki} już jest w słowniku")
+                    self.log.debug(f"{znaki} już jest w słowniku")
                 obecny_właściciel = self.kombinacje[znaki].litery
                 if obecny_właściciel == słowo.litery:
                     akordy_dodane.append(akord)
@@ -114,8 +114,8 @@ class Generator():
                          bez_środka=False,
                          z_przedrostkiem=False,
                          z_gwiazdką=False):
-        # if słowo in self.dbg:
-        self.log.debug(f"Szukam dla: {słowo}")
+        if słowo in self.dbg:
+            self.log.debug(f"Szukam dla: {słowo}")
         self.postęp += 1
 
         # Dla 'w', 'z'
@@ -132,7 +132,7 @@ class Generator():
         if z_przedrostkiem:
             akordy = []
             (przedrostek, sylaby) = self.znajdź_przedrostek_dla_sylab(sylaby)
-            self.log.debug(f"Z przedrostkiem {przedrostek}")
+            # self.log.debug(f"Z przedrostkiem {przedrostek}")
             podsłowo = ''.join(sylaby)
             if podsłowo in self.słownik.keys():
                 # self.log.debug(f"Z podsłowem {podsłowo}")
@@ -173,14 +173,14 @@ class Generator():
                                                        limit_prób, bez_środka,
                                                        z_gwiazdką)
         else:
-            self.log.debug(f"bez przedrostka")
+            # self.log.debug(f"bez przedrostka")
             akordy = self.klawiatura.wygeneruj_akordy(słowo,
                                                       sylaby,
                                                       limit_niedopasowania,
                                                       limit_prób, bez_środka,
                                                       z_gwiazdką)
             if słowo in self.dbg:
-                self.log.info(f"Bez przedrostka {słowo}: {akordy}")
+                self.log.debug(f"Bez przedrostka {słowo}: {akordy}")
 
         if z_przedrostkiem and przedrostek:
             nowe_akordy = []
@@ -207,7 +207,7 @@ class Generator():
                     nowe_akordy.append(multi_akord)
             return nowe_akordy
         if słowo in self.dbg:
-            self.log.info(f"zwracam dla {słowo}: {akordy}")
+            self.log.debug(f"zwracam dla {słowo}: {akordy}")
         return akordy
 
     def dodaj_modyfikator(self, akordy):
@@ -242,7 +242,7 @@ class Generator():
             self.log.debug(f"Dostałem akordy: {akordy}")
         dodane = []
         if not akordy:
-            self.log.error(f"Brak akordów dla {słowo} ({akordy})")
+            # self.log.error(f"Brak akordów dla {słowo} ({akordy})")
             return dodane
         dodane = self._dopasuj_akordy(słowo, akordy)
         if słowo.jest_przedrostkiem and len(dodane) > 0:
@@ -256,7 +256,7 @@ class Generator():
             # if tekst == "moc":
             #     self.log.info(f"generuje: {kombinacja}: {tekst}")
 
-            yield f'"{kombinacja}": "{słowo}"'
+            yield f' "{kombinacja}": "{słowo}"'
 
     def analizuj_słowo(self, słowo, częstotliwość):
         try:
