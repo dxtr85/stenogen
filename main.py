@@ -24,7 +24,7 @@ def main():
                         help='słowa do utworzenia słownika podzielone na sy=la=by')
     parser.add_argument('--baza', default='wyniki/baza-0.json',
                         help='początkowy plik słownika w formacie JSON')
-    parser.add_argument('--max_niedopasowanie', default='10',
+    parser.add_argument('--max_niedopasowanie', default='9',
                         help='Parametr generatora, 0 - tylko słowa idealnie pasujące, więcej niż 0 - słowa z brakującymi literami w akordzie')
     parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja.py',
                         help='plik konfiguracji generatora')
@@ -76,7 +76,7 @@ def main():
                       jest_przedrostkiem=czy_przedrostek,
                       klejone=czy_klejone)
         akordy = generator.wygeneruj_akordy(litera,
-                                            limit_niedopasowania=3,
+                                            limit_niedopasowania=0,
                                             limit_prób=10)
         dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
         udało_się = len(dodane) > 0
@@ -113,7 +113,7 @@ def main():
         udało_się = len(dodane) > 0
         if not udało_się:
             # niepowodzenia.append((litery, frekwencja))
-            max_modyfikatorów = 5
+            max_modyfikatorów = 7
             użyto_modyfikatorów = 0
             nowe_akordy = akordy
             while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
@@ -132,7 +132,7 @@ def main():
                     # nowe_akordy = generator.dodaj_znaki_specjalne_do_akordów(akordy,
                     #                                                          limit_niedopasowania=2,
                     #                                                          limit_prób=15)
-                    max_modyfikatorów = 5
+                    max_modyfikatorów = 7
                     użyto_modyfikatorów = 0
                     nowe_akordy = akordy
                     while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
@@ -225,7 +225,7 @@ def main():
             udało_się = len(dodane) > 0
             if not udało_się:
                 użyto_modyfikatorów = 0
-                max_modyfikatorów = 5
+                max_modyfikatorów = 7
                 nowe_akordy = akordy
                 while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
                     nowe_akordy = generator.dodaj_modyfikator(nowe_akordy)
@@ -258,53 +258,53 @@ def main():
             if numer_generacji % 100 == 0:
                 log.debug(f"{numer_generacji}: {słowo} - wygenerowano")
         niepowodzenia = nowe_niepowodzenia
-    ## Za pętlą
+    # ## Za pętlą
     log.info(f"Dodano {len(słownik) - linie_bazy} słów.")
 
 
-    ##  Na czas developmentu wyłączone
-    log.info("Dodaję słowa bez podanej częstotliwości")
-    istniejące_słowa = słownik.keys()
-    frekwencja = 1
-    for litery in sylaby_słowa.keys():
-        if litery in istniejące_słowa or litery.isnumeric():
-            continue
-        słowo = Słowo(litery)
-        akordy = generator.wygeneruj_akordy(litery,
-                                            limit_niedopasowania=max_niedopasowanie,
-                                            limit_prób=10)
-        dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
-        udało_się = len(dodane) > 0
-        if not udało_się:
-            użyto_modyfikatorów = 0
-            nowe_akordy = akordy
-            while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
-                nowe_akordy = generator.dodaj_modyfikator(nowe_akordy)
-                dodane = generator.dodaj_akordy_do_słownika(słowo, nowe_akordy)
-                udało_się = len(dodane) > 0
-                użyto_modyfikatorów += 1
+    # ##  Na czas developmentu wyłączone
+    # log.info("Dodaję słowa bez podanej częstotliwości")
+    # istniejące_słowa = słownik.keys()
+    # frekwencja = 1
+    # for litery in sylaby_słowa.keys():
+    #     if litery in istniejące_słowa or litery.isnumeric():
+    #         continue
+    #     słowo = Słowo(litery)
+    #     akordy = generator.wygeneruj_akordy(litery,
+    #                                         limit_niedopasowania=max_niedopasowanie,
+    #                                         limit_prób=10)
+    #     dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
+    #     udało_się = len(dodane) > 0
+    #     if not udało_się:
+    #         użyto_modyfikatorów = 0
+    #         nowe_akordy = akordy
+    #         while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
+    #             nowe_akordy = generator.dodaj_modyfikator(nowe_akordy)
+    #             dodane = generator.dodaj_akordy_do_słownika(słowo, nowe_akordy)
+    #             udało_się = len(dodane) > 0
+    #             użyto_modyfikatorów += 1
 
-            akordy = generator.wygeneruj_akordy(litery,
-                                                limit_niedopasowania=max_niedopasowanie,
-                                                limit_prób=10,
-                                                z_przedrostkiem=True)
-            dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
-            udało_się = len(dodane) > 0
-            if not udało_się:
-                użyto_modyfikatorów = 0
-                nowe_akordy = akordy
-                while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
-                    nowe_akordy = generator.dodaj_modyfikator(nowe_akordy)
-                    dodane = generator.dodaj_akordy_do_słownika(słowo, nowe_akordy)
-                    udało_się = len(dodane) > 0
-                    użyto_modyfikatorów += 1
-                if not udało_się:
-                    niepowodzenia.append((litery, frekwencja))
-        numer_generacji += 1
-        if numer_generacji % loguj_postęp_co == 0:
-            log.info(f"{numer_generacji}: {litery} - wygenerowano")
-        if numer_generacji % 100 == 0:
-            log.debug(f"{numer_generacji}: {litery} - wygenerowano")
+    #         akordy = generator.wygeneruj_akordy(litery,
+    #                                             limit_niedopasowania=max_niedopasowanie,
+    #                                             limit_prób=10,
+    #                                             z_przedrostkiem=True)
+    #         dodane = generator.dodaj_akordy_do_słownika(słowo, akordy)
+    #         udało_się = len(dodane) > 0
+    #         if not udało_się:
+    #             użyto_modyfikatorów = 0
+    #             nowe_akordy = akordy
+    #             while not udało_się and użyto_modyfikatorów < max_modyfikatorów:
+    #                 nowe_akordy = generator.dodaj_modyfikator(nowe_akordy)
+    #                 dodane = generator.dodaj_akordy_do_słownika(słowo, nowe_akordy)
+    #                 udało_się = len(dodane) > 0
+    #                 użyto_modyfikatorów += 1
+    #             if not udało_się:
+    #                 niepowodzenia.append((litery, frekwencja))
+    #     numer_generacji += 1
+    #     if numer_generacji % loguj_postęp_co == 0:
+    #         log.info(f"{numer_generacji}: {litery} - wygenerowano")
+    #     if numer_generacji % 100 == 0:
+    #         log.debug(f"{numer_generacji}: {litery} - wygenerowano")
 
 
     # log.info("Analizuję częstotliwość występowania fonemów...")

@@ -35,13 +35,15 @@ class Język:
 
         # Wykryj "i" które tylko zmiękcza, przesuń je do nagłosu
         zmiękczenie = False
-        if len(śródgłos) > 1 and śródgłos[0].startswith('i'):
+        # if len(śródgłos) > 1 and śródgłos[0].startswith('i'):
+        if not sylaba.startswith('i') and śródgłos[0].startswith('i'):
             śródgłos = śródgłos[1:]
             zmiękczenie = True
         nagłos = self.fonemy(re.split(self._samogłoski_re, sylaba)[0], zmiękczenie)
         wygłos = self.fonemy(re.split(self._samogłoski_re, sylaba)[1])
 
-        # self.log.debug(f"Rozłożyłem {sylaba} na N: {nagłos} Ś: {śródgłos} W: {wygłos}")
+        if sylaba == "au":
+            self.log.debug(f"Rozłożyłem {sylaba} na N: {nagłos} Ś: {śródgłos} W: {wygłos}")
         return (nagłos, śródgłos, wygłos)
 
     def fonemy(self, słowo, zmiękczenie = False):    

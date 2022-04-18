@@ -114,7 +114,7 @@ class Generator():
                          bez_środka=False,
                          z_przedrostkiem=False,
                          z_gwiazdką=False):
-        if słowo in self.dbg:
+        if słowo not in self.dbg:
             self.log.debug(f"Szukam dla: {słowo}")
         self.postęp += 1
 
