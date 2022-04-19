@@ -36,7 +36,7 @@ class Generator():
         self.analizowane_fonemy = defaultdict(lambda: 0)
         self.analizowane_końcówki = defaultdict(lambda: 0)
         self.modyfikator = Akord(self.log, "~", 0)
-        self.dbg = []
+        self.dbg = ["acheiropoietami"]
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info("Inicjalizuję bazę generatora")

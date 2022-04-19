@@ -2,8 +2,10 @@ class KonfiguracjaGeneratora:
     pass
 
 class KonfiguracjaJęzyka:
+    spółgłoski = ['b', 'c', 'ć', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'p', 'q', 'r', 's', 'ś', 't', 'v', 'w', 'x', 'z', 'ź', 'ż']
     nic = ""
     samogłoski = ['a', 'ą', 'e', 'ę', 'i', 'o', 'ó', 'u', 'y']
+    jednoliterowe_wyrazy  = ['a', 'i', 'o', 'u', 'w', 'z']
     # {"Fonem": ("Lewa ręka", "Prawa ręka")}
     fonemy_spółgłoskowe = {"b": ("XP", "B"),  # zm. lewe z P~
                            "bi": ("XPJ", "BW"),  # zm. lewe z PJ~
@@ -107,6 +109,7 @@ class KonfiguracjaJęzyka:
 
 
 class KonfiguracjaKlawiatury:
+    kolejność = '/XFZSKTPVLRJE-~*IAUCRLBSGTWOY'
     tylda = "~"
     gwiazdka = "*"
     myślnik = "-"
@@ -116,24 +119,32 @@ class KonfiguracjaKlawiatury:
     aa = "A"
     uu = "U"
 
+    palce_lewe = [("X", "F", "Z", "S"),
+                  ("K", "T"),
+                  ("P", "V"),
+                  ("L", "R", tylda, gwiazdka),
+                  ("J", "E", "I")]
+
+    znaki_środka = [jot, ee, tylda, gwiazdka, ii, aa, uu]
+
+    palce_prawe = [("I", "A", "U"),
+                  (tylda, gwiazdka, "C", "R"),
+                  ("L", "B"),
+                  ("S", "G"),
+                  ("T", "W", "O", "Y")]
+
     # indeksy kolumn po lewej stronie od 0
     lewe_indeksy_klawiszy = {"X": 0, "F": 0, "XF": 0, "XZ": 0, "FS": 0, "XFZS": 0,
                              "Z": 1, "S": 1, "ZS": 1,
                              "K": 2, "T": 2, "KT": 2,
-                             "P": 3, "V": 3, "PV": 3,
-                             "L": 4, "R": 4, "LR": 4,
-                             tylda: 5, gwiazdka: 5,
-                             jot: 6}
-
+                             "P": 3, "V": 3, "PV": 3, jot: 3,
+                             "L": 4, "R": 4, "LR": 4, ee: 4,
+                             tylda: 5, gwiazdka: 5, ii: 5}
 
     # indeksy kolumn po prawej stronie od 0
-    prawe_indeksy_klawiszy = {tylda: 5, gwiazdka: 5,
-                              "C": 6, "R": 6, "CR": 6,
-                              "L": 7, "B": 7, "LB": 7,
+    prawe_indeksy_klawiszy = {tylda: 5, gwiazdka: 5, ii: 5,
+                              "C": 6, "R": 6, "CR": 6, aa: 6,
+                              "L": 7, "B": 7, "LB": 7, uu: 7,
                               "S": 8, "G": 8, "SG": 8,
                               "T": 9, "W": 9, "TW": 9, "TO": 9, "WY": 9, "TWOY": 9,
                               "O": 10, "Y": 10, "OY": 10}
-
-
-    znaki_środka = [jot, ee, tylda, gwiazdka, ii, aa, uu]
-

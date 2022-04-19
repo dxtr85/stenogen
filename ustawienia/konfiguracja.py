@@ -108,6 +108,7 @@ class KonfiguracjaJęzyka:
 
 
 class KonfiguracjaKlawiatury:
+    kolejność = '/XFZDNTPVKRJE-~*IAUKZDWNTYOBC'
     tylda = "~"
     gwiazdka = "*"
     myślnik = "-"
