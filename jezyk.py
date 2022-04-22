@@ -116,8 +116,8 @@ class Język:
         środek_bez_nagłosu = True
         środek_bez_wygłosu = True
         for fonem in nagłos:
+            # self.log.info(f"waga 3: {sylaba_środkowa} {fonem}")
             waga_słowa += self.wagi_fonemów[fonem][0]
-            # self.log.debug(f"waga 3: {waga_słowa} {fonem}")
             środek_bez_nagłosu = False
             fonemy_lewe.append(fonem)
         if lewe_bez_wygłosu and środek_bez_nagłosu:

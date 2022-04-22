@@ -26,16 +26,17 @@ class Klawiatura:
         wspólne_klawisze = self.ręka_lewa.zwróć_wspólne_klawisze()
         self.ręka_prawa = RękaPrawa(log, konfiguracja, wspólne_klawisze)
         self.rozdzielacz = SłownikDomyślny(lambda x: dzielniki_dla_słowa_o_długości(x))
-        self.dbg = [["a", "chei", "ro", "po", "ie", "ta", "mi"]]
+        self.dbg = []#["mię", "kko"],["kra", "i", "na"]]
 
-    def wygeneruj_akordy(self, słowo,
-                         sylaby,
-                         limit_niedopasowania,
-                         limit_prób,
-                         bez_środka=False,
-                         z_gwiazdką=False):
+    def wygeneruj_słowa(self, słowo,
+                        sylaby,
+                        limit_niedopasowania,
+                        limit_prób,
+                        bez_środka=False,
+                        z_gwiazdką=False):
+        self.kombinacje = {}
         dzielniki_słowa = self.rozdzielacz[len(sylaby)]
-        akordy = []
+        słowa = []
         # if sylaby in self.dbg:
         # self.log.debug(f"wygeneruj: {sylaby}")
         for gdzie_podzielić in dzielniki_słowa:
@@ -44,7 +45,8 @@ class Klawiatura:
             limit_prób -= 1
             
             # self.log.debug(f"Dzielę {słowo} w {gdzie_podzielić}, limit: {limit_prób}")
-            (waga_słowa, id_środkowej_kombinacji)  = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić, z_gwiazdką)
+            # (waga_słowa, id_środkowej_kombinacji)  = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić, z_gwiazdką)
+            waga_słowa  = self.zbuduj_kombinacje_dla_sylab(sylaby, gdzie_podzielić, z_gwiazdką)
             if sylaby in self.dbg:
                 self.log.debug(f"waga słowa: {waga_słowa}")
 
@@ -82,21 +84,22 @@ class Klawiatura:
             elif akord.niedopasowanie <= limit_niedopasowania:
                 if sylaby in self.dbg:
                     self.log.debug(f"jest ok: {sylaby} ako:{akord}")
-                akordy.append(akord)#, niedopasowanie))
-            # self.log.debug(f"Bez inv: {akordy}")
+                słowo = StenoSłowo(self.log, [akord])
+                słowa.append(słowo)#, niedopasowanie))
+            # self.log.debug(f"Bez inv: {słowa}")
             if limit_prób > 0:
-                akordy += self.akordy_z_inwersją(kombinacje_do_odjęcia_lewe,
-                                                 kombinacje_do_odjęcia_prawe,
-                                                 waga_słowa,# + waga_środka,
-                                                 limit_niedopasowania,
-                                                 limit_prób)
+                słowa += self.słowa_z_inwersją(kombinacje_do_odjęcia_lewe,
+                                               kombinacje_do_odjęcia_prawe,
+                                               waga_słowa,# + waga_środka,
+                                               limit_niedopasowania,
+                                               limit_prób)
             if sylaby in self.dbg:
-                self.log.debug(f"z inversjią: {sylaby} ako:{akordy}")
-            # self.log.debug(f"Z inv: {akordy}")
+                self.log.debug(f"z inversjią: {sylaby} ako:{słowa}")
+            # self.log.debug(f"Z inv: {słowa}")
             self.zresetuj_klawiaturę()
         if sylaby in self.dbg:
-            self.log.debug(f"{sylaby} zwracam: {akordy}")
-        return akordy
+            self.log.debug(f"{sylaby} zwracam: {słowa}")
+        return słowa
 
     def akord_bez_inwersji(self, od_lewe, od_prawe, waga_słowa):
         # self.log.debug(f"W bez inw: {od_lewe}, {od_prawe}")
@@ -111,7 +114,8 @@ class Klawiatura:
             #     self.log.error(f"BIL Idx za duży: {idx_kombinacji}, dostępne komb: {self.kombinacje}")
             #     continue
             lewa_do_odj = self.kombinacje[idx_kombinacji]
-            self.log.debug(f"Odejmuję {lewa_do_odj}")
+            # self.log.debug(f"Odejmuję {lewa_do_odj}")
+            # self.log.debug(f"1 {idx_kombinacji}")
             self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
             komb_lewe.append(idx_kombinacji)
         for idx_kombinacji in od_prawe:
@@ -120,6 +124,7 @@ class Klawiatura:
             #     continue
             prawa_do_odj = self.kombinacje[idx_kombinacji]
             # self.log.debug(f"Deaktywuję z prawej: {idx_kombinacji} {self.kombinacje} (wszystkie: {od_prawe})")
+            # self.log.debug(f"2")
             self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
             komb_prawe.append(idx_kombinacji)
         akord = self.połącz_ręce(waga_słowa) ## TODO: może waga_środka=0?
@@ -134,18 +139,18 @@ class Klawiatura:
         # self.log.debug(f"wyjście akord: {akord}")
         return akord
 
-    def akordy_z_inwersją(self, od_lewe, od_prawe,
+    def słowa_z_inwersją(self, od_lewe, od_prawe,
                           waga_słowa,
                           limit_niedopasowania, limit_prób):
         # self.log.debug(f"z inw, prób: {limit_prób}")
         # self.log.debug(f"z inw, limit niedo: {limit_niedopasowania}")
         # self.log.debug(f"Z lewe do odj: {od_lewe}")
-        # self.log.debug(f"śr: {środek}")
         # self.log.debug(f"Z prawe do odj: {od_prawe}")
+        # self.log.debug(f"Z wszystkie: {self.kombinacje}")
         # self.log.debug(f"wag: {waga_słowa}")
         dł_lewe = len(od_lewe)
         dł_prawe = len(od_prawe)
-        akordy = []
+        słowa = []
         wszystkie_lewe_odjęte = False
         wszystkie_prawe_odjęte = False
         następny_do_pominięcia_lewy = 0
@@ -166,6 +171,7 @@ class Klawiatura:
                     #     continue
 
                     prawa_do_odj = self.kombinacje[id]
+                    # self.log.debug(f"3")
                     self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
                     komb_prawe.append(prawa_do_odj)
                 # A z lewej strony zostawiamy jedną malejącą kombinację, aby skorzystać z inwersji
@@ -182,13 +188,16 @@ class Klawiatura:
                         #     continue
                         lewa_do_odj = self.kombinacje[od_lewe[idx]]
                         # self.log.debug(f"Odejmuję {lewa_do_odj}")
+                        # self.log.debug(f"4")
                         self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
                         komb_lewe.append(lewa_do_odj)
                     akord = self.połącz_ręce(waga_słowa)
                     # self.log.debug(f"Akord: {akord}(waga: {waga_słowa}), niedo: {akord.niedopasowanie}")
                     if akord.niedopasowanie <= limit_niedopasowania:
                         # self.log.debug(f"Dodaję: {akord}")
-                        akordy.append(akord)#, waga_akordu))
+                        słowo = StenoSłowo(self.log, [akord])
+                        słowa.append(słowo)
+                        # akordy.append(akord)#, waga_akordu))
                     # self.log.debug(f"KoMb do aktywacji: {komb_lewe}")
                     # Aktywujemy spowrotem kombinacje lewe
                     for komb in komb_lewe:
@@ -210,6 +219,7 @@ class Klawiatura:
                     #     continue
 
                     lewa_do_odj = self.kombinacje[id]
+                    # self.log.debug(f"5 {lewa_do_odj} id: {id}")
                     self.ręka_lewa.deaktywuj_kombinację(lewa_do_odj)
                     komb_lewe.append(lewa_do_odj)
                 # I z drugiej strony usuwamy wszystkie kombinacje oprócz jednej
@@ -224,6 +234,7 @@ class Klawiatura:
                         #     self.log.error(f"EZIP Idx za duży: {od_prawe[idx]} (w {od_prawe}),dostępne: {self.kombinacje}")
                         #     continue
                         prawa_do_odj = self.kombinacje[od_prawe[idx]]
+                        # self.log.debug(f"6")
                         self.ręka_prawa.deaktywuj_kombinację(prawa_do_odj)
                         komb_prawe.append(prawa_do_odj)
                     akord = self.połącz_ręce(waga_słowa)
@@ -231,7 +242,9 @@ class Klawiatura:
                     # niedopasowanie = waga_słowa - waga_środka - waga_akordu
                     if akord.niedopasowanie <= limit_niedopasowania:
                         # self.log.debug(f"Dodaję: {akord}")
-                        akordy.append(akord)
+                        słowo = StenoSłowo(self.log, [akord])
+                        słowa.append(słowo)
+                        # akordy.append(akord)
                     for kombo in komb_prawe:
                         self.ręka_prawa.aktywuj_kombinację(kombo)
                     następny_do_pominięcia_prawy += 1
@@ -243,7 +256,7 @@ class Klawiatura:
                     break
             else:
                 break
-        return akordy
+        return słowa
 
     # TODO obsługa 'z_gwiazdką'
     def zbuduj_kombinacje_dla_sylab(self, sylaby, gdzie_podzielić, z_gwiazdką):
@@ -298,6 +311,7 @@ class Klawiatura:
             # for znak in znaki:
             #     if znak not in kombinacja_środkowa:
             #         kombinacja_środkowa += znak
+            # id_środkowej_kombinacji = None
             if sylaby in self.dbg:
                 self.log.debug(f"Trzepiemy środek dla fonemu: {fonem}")
             znaki = self.klawisze_dla_fonemu(fonem)
@@ -322,17 +336,21 @@ class Klawiatura:
                         self.log.debug(f"Z prawej też nie poszło")
                     self.log.error(f"Nie dodałem kombinacji dla {znaki}")
                 else:
+                    dostępne_id_kombinacji += 1
+                    # id_środkowej_kombinacji = dostępne_id_kombinacji - 1
                     kombinacje_prawe.append(dodana_prawa)
                     if sylaby in self.dbg:
                         self.log.debug(f"dod prawa: {dodana_prawa}")
             else:
+                dostępne_id_kombinacji += 1
+                # id_środkowej_kombinacji = dostępne_id_kombinacji
                 dodana_prawa = False
                 kombinacje_lewe.append(dodana_lewa)
-
-        id_środkowej_kombinacji = dostępne_id_kombinacji
-        dostępne_id_kombinacji += 1
+        # if not id_środkowej_kombinacji:
+        #     self.log.debug(f"Nie ma jeszcze id środka?!")
+        #     id_środkowej_kombinacji = dostępne_id_kombinacji
         if sylaby in self.dbg:
-            self.log.debug(f"{sylaby}: środek {id_środkowej_kombinacji}: {kombinacje_lewe} {kombinacje_prawe}")
+            self.log.debug(f"{sylaby}: {kombinacje_lewe} {kombinacje_prawe}")
         pierwsza = False
         ostatnia = False
         długość_prawych = len(fonemy_prawe_orig)
@@ -380,10 +398,15 @@ class Klawiatura:
         # self.kombinacje = kombinacje_lewe + kombinacje_prawe
         if sylaby in self.dbg:
                 self.log.debug(f"{sylaby} kombinacje: {self.kombinacje}")
+                self.log.debug(f"lewe: {kombinacje_lewe}")
+                self.log.debug(f"prawe: {kombinacje_prawe}")
         self.minimalne_indeksy_lewe = self.minimalne_indeksy_kombinacji(kombinacje_lewe)
         self.minimalne_indeksy_prawe = self.minimalne_indeksy_kombinacji(kombinacje_prawe)
-        return (waga_słowa, id_środkowej_kombinacji)
-
+        # self.log.debug(f"min lewe: {self.minimalne_indeksy_lewe}")
+        # self.log.debug(f"min prawe: {self.minimalne_indeksy_prawe}")
+        # return (waga_słowa, id_środkowej_kombinacji)
+        return waga_słowa
+                
     def minimalne_indeksy_kombinacji(self, kombinacje):
         minimalne = []
         for kombinacja in kombinacje:
@@ -503,13 +526,14 @@ class Klawiatura:
                     return (False, (i, ciąg[i][1]))
         return (True, (None, None))
 
-    def dodaj_znaki_specjalne_do_akordu(self, akord):
+    def dodaj_znaki_specjalne_do_słowa(self, słowo):
         # TODO: obsługa ciągów akordów
         # self.log.debug(f"Próbuję dodać znaki dla {akord} ({akord.dodanie_tyldy[0]}, {akord.dodanie_gwiazdki[0]}, {akord.dodanie_tyldogwiazdki[0]})")
-        ciąg = False
-        if isinstance(akord, list):
-            ciąg = akord[:-1]
-            akord = akord[-1]
+        # ciąg = False
+        # if isinstance(akord, list):
+        #     ciąg = akord[:-1]
+        #     akord = akord[-1]
+        akord = słowo.ostatni_akord()
         nowe_akordy = []
         # TODO: obsługa drugich booli
         if akord.dodanie_tyldy[0]:
@@ -525,19 +549,21 @@ class Klawiatura:
             nowy_akord.jest_tylda = True
             nowy_akord.jest_gwiazdka = True
             nowe_akordy.append(nowy_akord)
-        if not ciąg:
-            # self.log.debug(f"koniec prób 1: {nowe_akordy}")
-            return nowe_akordy
-        nowe_ciągi = []
-        for akord in nowe_akordy:
-            nowy_ciąg = []
-            for istniejący_akord in ciąg:
-                nowy_ciąg.append(istniejący_akord)
-            nowy_ciąg.append(akord)
-            # self.log.debug(f"Dorzucam {akord} do {ciąg}): {nowy_ciąg}")
-            nowe_ciągi.append(nowy_ciąg)
-        # self.log.debug(f"Koniec prób 2: {nowe_ciągi}")
-        return nowe_ciągi
+
+        nowe_słowa = słowo.kombinuj_bez_ostatniego_akordu(nowe_akordy)
+        # if not ciąg:
+        #     # self.log.debug(f"koniec prób 1: {nowe_akordy}")
+        #     return nowe_akordy
+        # nowe_ciągi = []
+        # for akord in nowe_akordy:
+        #     nowy_ciąg = []
+        #     for istniejący_akord in ciąg:
+        #         nowy_ciąg.append(istniejący_akord)
+        #     nowy_ciąg.append(akord)
+        #     # self.log.debug(f"Dorzucam {akord} do {ciąg}): {nowy_ciąg}")
+        #     nowe_ciągi.append(nowy_ciąg)
+        # self.log.debug(f"Koniec prób 2: {nowe_słowa}")
+        return nowe_słowa
 
     def zresetuj_klawiaturę(self):
         self.ręka_lewa.zresetuj_rękę()
@@ -697,6 +723,8 @@ class RękaLewa:
         if testuj and not all([znak in self.indeksy for znak in znaki]):
             # self.log.debug(f"Kombinacja nie wspierana: {znaki} dla Lewej Ręki")
             return None
+        # if testuj:
+        #     self.log.debug(f"Kombinacja wspierana: {znaki} dla Lewej Ręki")
         kombinacja = Kombinacja(self.log,
                                 self.indeksy,
                                 id_kombinacji,
@@ -842,6 +870,8 @@ class RękaPrawa:
         if testuj and not all([znak in self.indeksy for znak in znaki]):
             # self.log.debug(f"Kombinacja nie wspierana: {znaki} dla Prawej Ręki")
             return None
+        # if testuj:
+        #     self.log.debug(f"Kombinacja wspierana: {znaki} dla Prawej Ręki")
         kombinacja = Kombinacja(self.log,
                                 self.indeksy,
                                 id_kombinacji,
@@ -951,6 +981,7 @@ class Palec:
                                          obsługiwane_klawisze[1],
                                          obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
                                          obsługiwane_klawisze[2]]
+            # self.log.info(f"Wspierany trójpalec: {self.wspierane_kombinacje}")
         self.obsługiwane_klawisze = obsługiwane_klawisze
         self.klawisze = {}
         self.ma_wspólne_klawisze = ma_wspólne_klawisze
@@ -1383,7 +1414,7 @@ class Akord:
         return f"{self.tekst_lewy}{jot if self.jest_jot else nic}{ee if self.jest_ee else nic}{tylda if self.jest_tylda else nic}{gwiazdka if self.jest_gwiazdka else nic}"
 
     def p_tekst(self):
-        return f"{ii if self.jest_ii else nic}{aa if self.jest_aa else nic}{uu if self.jest_uu else nic}{self.tekst_prawy}"
+        return f"{uu if self.jest_uu else nic}{aa if self.jest_aa else nic}{ii if self.jest_ii else nic}{self.tekst_prawy}"
 
     def __repr__(self):
         myślnik_wymagany = True
@@ -1394,3 +1425,73 @@ class Akord:
         if myślnik in l_tekst or myślnik in p_tekst:
             myślnik_wymagany = False            
         return f"{l_tekst}{myślnik if myślnik_wymagany else nic}{p_tekst}"
+
+
+class StenoSłowo:
+    def __init__(self, log, akordy):
+        self.log = log
+        self.akordy = akordy
+        self.niedopasowanie = 0
+        for akord in akordy:
+            self.niedopasowanie += akord.niedopasowanie
+
+    def __add__(self, akord):
+        # self.log.info(f"Dodaję {akord} {type(akord)}")
+        if isinstance(akord, Akord):
+            self.akordy.append(akord)
+            self.niedopasowanie += akord.niedopasowanie
+            return self
+        elif isinstance(akord, StenoSłowo):
+            for ako in akord.akordy:
+                self.akordy.append(ako)
+            self.niedopasowanie += akord.niedopasowanie
+            return self
+        elif isinstance(akord, list):
+            for ako in akord:
+                self.akordy.append(ako)
+                self.niedopasowanie += ako.niedopasowanie
+            return self
+        else:
+            self.log.error(f"Nie wiem jak dodać: {akord} {type(akord)}")
+            
+    def __repr__(self):
+        słowo = ""
+        for akord in self.akordy:
+            słowo += f"{akord}/"
+        return słowo[:-1]
+
+    def ostatni_akord(self):
+        return self.akordy[-1]
+
+    def kopia(self):
+        nowe_akordy = []
+        for akord in self.akordy:
+            nowe_akordy.append(akord.kopia())
+        kopia = StenoSłowo(self.log,
+                           nowe_akordy)
+        return kopia
+
+    def kombinuj(self, słowa):
+        nowe_słowa = []
+        # self.log.info(f"Kombinuję: {słowa} {type(słowa[0])}")
+        for słowo in słowa:
+            kopia = self.kopia()
+            # self.log.info(f"kopia: {kopia}")
+            nowe_słowo = kopia + słowo
+            # self.log.info(f"nowe: {nowe_słowo}")
+            nowe_słowa.append(nowe_słowo)
+        return nowe_słowa
+
+    def kombinuj_bez_ostatniego_akordu(self, słowa):
+        if not słowa:
+            return []
+        if len(self.akordy) == 1:
+            nowe_stenosłowa = []
+            for słowo in słowa:
+                nowe_stenosłowo = StenoSłowo(self.log, [słowo])
+                nowe_stenosłowa.append(nowe_stenosłowo)
+            return nowe_stenosłowa
+        kopia = self.kopia()
+        kopia.niedopasowanie -= kopia.akordy[-1].niedopasowanie
+        kopia.akordy = kopia.akordy[:-1]
+        return kopia.kombinuj(słowa)
