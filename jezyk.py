@@ -1,7 +1,6 @@
 from pomocnicy import SłownikDomyślny
 import collections
 import re
-from pyphen import Pyphen
 
 nic = ""
 
@@ -17,13 +16,46 @@ class Język:
         self.fonemy_spółgłoskowe = konfiguracja.fonemy_spółgłoskowe
         self.samogłoski = konfiguracja.samogłoski
         self._samogłoski_re = re.compile(r'[aąeęioóuy]+')
-        self.sylabizator = Pyphen(lang='pl_PL')
 
     def rozbij(self, słowo):
         return [char for char in słowo]
 
-    def sylabizuj(self, słowo):
-        return self.sylabizator.inserted(słowo).split('-')
+    def pseudo_sylabizuj(self, słowo):
+        sylaby = []
+        poprzednia_sylaba = ""
+        bieżąca_sylaba = ""
+        możliwy_koniec_sylaby = False
+        samogłoska_w_obecnej_sylabie = False
+        while słowo:
+            obecna_litera = słowo[0]
+            słowo = słowo[1:]
+            if możliwy_koniec_sylaby:
+                if obecna_litera not in self.samogłoski:
+                    if samogłoska_w_obecnej_sylabie:
+                        sylaby.append(bieżąca_sylaba)
+                        bieżąca_sylaba = obecna_litera
+                        możliwy_koniec_sylaby = False
+                        samogłoska_w_obecnej_sylabie = False
+                else:
+                    bieżąca_sylaba += obecna_litera
+                    możliwy_koniec_sylaby = True
+                    samogłoska_w_obecnej_sylabie = True
+            else:
+                bieżąca_sylaba += obecna_litera
+                if obecna_litera in self.samogłoski:
+                    możliwy_koniec_sylaby = True
+                    samogłoska_w_obecnej_sylabie = True
+        if samogłoska_w_obecnej_sylabie:
+            sylaby.append(bieżąca_sylaba)
+        else:
+            if sylaby:
+                ostatnia_sylaba = sylaby.pop()
+            else:
+                ostatnia_sylaba = ""
+            ostatnia_sylaba += bieżąca_sylaba
+            sylaby.append(ostatnia_sylaba)
+        return sylaby
+
 
     def rozłóż_sylabę(self, sylaba: str):
         m = self._samogłoski_re.search(sylaba)

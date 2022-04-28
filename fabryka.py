@@ -4,11 +4,13 @@ from klawiatura import Klawiatura
 import collections
 
 class Fabryka():
-    def __init__(self, log, konfiguracja, słownik_ostateczny, sylaby, przedrostki):
+    def __init__(self, log, konfiguracja, słownik_ostateczny, przedrostki):
         self.log = log
         self.słownik = słownik_ostateczny
         self.konfiguracja = konfiguracja
         self.jednoliterowe_wyrazy = konfiguracja.KonfiguracjaJęzyka.jednoliterowe_wyrazy
+        self.zawsze_startuj_wszystkie_linie = konfiguracja.KonfiguracjaFabryki.zawsze_startuj_wszystkie_linie
+        self.minimum_kombinacji_dodanych_per_słowo = konfiguracja.KonfiguracjaFabryki.minimum_kombinacji_dodanych_per_słowo
         self.ustawienia_fabryki = konfiguracja.KonfiguracjaFabryki.ustawienia_fabryki
         self.max_słów_na_akord = konfiguracja.KonfiguracjaFabryki.max_słów_na_akord
         self.loguj_postęp_co = konfiguracja.KonfiguracjaFabryki.loguj_postęp_co
@@ -19,8 +21,8 @@ class Fabryka():
                                    self.język,
                                    self.klawiatura,
                                    konfiguracja,
-                                   słownik_ostateczny,
-                                   sylaby)
+                                   słownik_ostateczny) #,
+                                   # sylaby)
         self.typ_generacji = None
         self.numer_generacji = 0
         self.przedrostki = przedrostki
@@ -55,17 +57,20 @@ class Fabryka():
             self.wejście = wejście
 
         self.sprawdzaj_czy_jednowyrazowe_słowo = ustawienie.sprawdzaj_czy_jednowyrazowe_słowo
+        self.jest_przedrostkiem = ustawienie.jest_przedrostkiem
+        self.jest_rdzeniem = ustawienie.jest_rdzeniem
         self.czy_klejone = ustawienie.czy_klejone
         self.sprawdzaj_czy_jest_przedrostkiem = ustawienie.sprawdzaj_czy_jest_przedrostkiem
         self.limit_niedopasowania = ustawienie.limit_niedopasowania
         self.limit_prób = ustawienie.limit_prób
 
-    def uruchom_linie(self, wejście, nazwa_ustawień):
+    def uruchom_linie(self, wejście, nazwa_ustawień, sylaby=None):
         self.ustaw_linie_produkcyjne(nazwa_ustawień)
-        self.wejście_dodane = False
+        self.sylaby = sylaby
+        self.można_przerwać = False
         # TODO: można zrobić, żeby opcjonalnie zawsze przechodzić wszystkie linie
         # self.log.info(f"uruchom_liniE {wejście}, {nazwa_ustawień} {self.typ_generacji}")
-        while not self.wejście_dodane and self.aktualne_ustawienia:
+        while not self.można_przerwać and self.aktualne_ustawienia:
             self.aktywuj_ustawienie(wejście)
             self.uruchom_linię()
         return self.ile_dodano
@@ -77,6 +82,7 @@ class Fabryka():
         if self.typ_generacji == self.konfiguracja.TypyGeneracji.StandardowaGeneracja:
             self.generacja_standardowa()
         elif self.typ_generacji == self.konfiguracja.TypyGeneracji.GeneracjaZnakówSpecjalnych:
+            # self.log.info(f"spec: {self.wejście}")
             self.generacja_ze_znakami_specjalnymi()
         elif self.typ_generacji == self.konfiguracja.TypyGeneracji.GeneracjaZModyfikatorami:
             self.generacja_z_modyfikatorami()
@@ -92,9 +98,11 @@ class Fabryka():
 
     def generacja_standardowa(self):
         # self.log.info(f"std in: {self.wejście}")
-        if self.wejście in self.istniejące_słowa or self.wejście.isnumeric():
-            self.wejście_dodane = True
-            self.ile_dodano += 1
+        if (self.wejście in self.istniejące_słowa \
+          and not self.zawsze_startuj_wszystkie_linie) or\
+          self.wejście.isnumeric():
+            # self.wejście_dodane = True
+            # self.ile_dodano += 1
             return
         if self.sprawdzaj_czy_jednowyrazowe_słowo and\
           self.wejście in self.jednoliterowe_wyrazy:
@@ -110,14 +118,28 @@ class Fabryka():
                       klejone=self.czy_klejone)
         stenosłowa = self.generator.wygeneruj(self.wejście,
                                               limit_niedopasowania=self.limit_niedopasowania,
+                                              sylaby=self.sylaby,
                                               limit_prób=self.limit_prób,
                                               z_przedrostkiem=self.z_przedrostkiem)
+        # self.log.info(f"std: {stenosłowa}")
+        if self.jest_rdzeniem:
+            if stenosłowa:
+                self.generator.dodaj_rdzeń(self.wejście, stenosłowa[0])
+            else:
+                self.log.error(f"Nie znalazłem kombinacji dla rdzenia '{self.wejście}'")
+            return
         dodane = self.generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
         udało_się = len(dodane) > 0
+        if self.jest_przedrostkiem and udało_się:
+            self.generator.przedrostki.add(self.wejście)
+                
         # self.log.info(f"koniec std, {udało_się}, {słowo}, {stenosłowa}")
         self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
 
     def generacja_ze_znakami_specjalnymi(self):
+        # self.log.info(f"Ze znakami: {self.wejście}")
+        if not self.wejście:
+            return
         (self.wejście, słowo, stenosłowa) = self.wejście
         nowe_stenosłowa = self.generator.dodaj_znaki_specjalne_do_słów(stenosłowa,
                                                                        limit_niedopasowania=self.limit_niedopasowania,
@@ -128,6 +150,8 @@ class Fabryka():
         self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
 
     def generacja_z_modyfikatorami(self):
+        if not self.wejście:
+            return
         (self.wejście, słowo, stenosłowa) = self.wejście
         użyto_modyfikatorów = 0
         nowe_stenosłowa = stenosłowa
@@ -192,12 +216,15 @@ class Fabryka():
         self.aktualizuj_wyjścia(udało_się, słowo, początki)
        
     def aktualizuj_wyjścia(self, udało_się, słowo, stenosłowa):
+        # self.log.info(f"Wejście przy aktualizuj: {self.wejście}")
         if not udało_się:
             self.niepowodzenie_linii = self.wejście
             self.wyjście_z_poprzedniej_linii_niepowodzenia = (self.wejście, słowo, stenosłowa)
         else:
             self.ile_dodano += 1
-            self.wejście_dodane = True
+            if not self.zawsze_startuj_wszystkie_linie and self.ile_dodano > self.minimum_kombinacji_dodanych_per_słowo:
+                self.można_przerwać = True
+            # self.wejście_dodane = True
             self.istniejące_słowa.add(self.wejście)
 
     def grupuj_sylaby(self, sylaby, po_ile_sylab):
@@ -228,13 +255,13 @@ class Fabryka():
             if self.wejście.isnumeric():
                 # self.log.info(f"puste")
                 sylaby = []
-            if len(słowo) == 1:
+            if len(self.wejście) == 1:
                 # self.log.info(f"len jeden")
                 sylaby = [self.wejście]
                 sylaby = sylaby.copy()
             else:
                 # self.log.info(f"sylabizuje")
-                sylaby = self.generator.język.sylabizuj(słowo)
+                sylaby = self.generator.język.pseudo_sylabizuj(self.wejście)
         # self.log.info(f"podzieliłem: {sylaby}")
         return sylaby
 
@@ -250,5 +277,5 @@ class Fabryka():
         except ValueError as e:
             self.log.error(f"Coś nie sortuje: {e}")
             self.log.info(f"Czy na pewno plik bazy zawiera kombinacje tylko z dopuszczalnymi znakami dla tego układu?")
-        self.log.info("Sortowanie zakończone, zapisuję...")
+        self.log.info(f"Sortowanie zakończone, zapisuję  {len(posortowany_słownik)} wpisów...")
         pisarz.zapisz_sortowane(posortowany_słownik)

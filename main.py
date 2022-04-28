@@ -2,6 +2,7 @@
 from logowanie import Logger
 from fabryka import Fabryka
 from pomocnicy import Czytacz, Pisarz, SłownikDomyślny
+from drzewo_sylab import utwórz_drzewo_binarne_z_listy_par_sylaba_frekwencja
 import argparse
 
 import collections
@@ -20,7 +21,10 @@ def main():
                         help='dane frekwencyjne (w formacie linii csv: "słowo",częstość)')
     parser.add_argument('--slowa', default='data/slownik',
                         help='słowa do utworzenia słownika podzielone na sy=la=by')
-    parser.add_argument('--baza', default='wyniki/baza-0abs.json',
+    # parser.add_argument('--baza', default='wyniki/spektralny-slowik_niesortowany.json',
+    parser.add_argument('--słowa_z_drzewa', default='wyniki/slowa_z_drzewa.csv',
+                        help='rezultaty f-cji utwórz_drzewo_binarne_z_listy_par_sylaba_frekwencja')
+    parser.add_argument('--baza', default='wyniki/baza-1.json',
                         help='początkowy plik słownika w formacie JSON')
     parser.add_argument('--max_niedopasowanie', default='7',
                         help='Parametr generatora, 0 - tylko słowa idealnie pasujące, więcej niż 0 - słowa z brakującymi literami w akordzie')
@@ -56,7 +60,7 @@ def main():
 
     if args.baza:
         log.info(f"Czytam bazę słownika z {args.baza}")
-        (słownik, linie_bazy) = czytacz.wczytaj_bazę_do_słownika(args.baza)
+        (słownik, linie_bazy) = czytacz.wczytaj_bazę_do_słownika(log, args.baza)
         log.info(f"Baza wczytana")
     else:
         słownik = collections.defaultdict(dict)
@@ -64,174 +68,74 @@ def main():
 
  
     (sylaby_słowa, ile_słów_wczytano) = czytacz.wczytaj_słowa(log, args.slowa)
-    (przedrostki, ile_przedrostków_wczytano) = czytacz.wczytaj_słowa(log, args.przedrostki)
-    generator = Generator(log, język, klawiatura, konfiguracja, słownik, sylaby_słowa)
-    fabryka = Fabryka(log, konfiguracja, słownik, sylaby_słowa, przedrostki)
+    # generator = Generator(log, język, klawiatura, konfiguracja, słownik, sylaby_słowa)
+    fabryka = Fabryka(log, konfiguracja, słownik, przedrostki)
     czas_start = time.time()
+    niepowodzenia = []
+    niepowodzenia_przedrostków = []
 
     log.info(f"Generuję klawisze dla liter alfabetu...")
-    niepowodzenia = []
     wejścia = konfiguracja.KonfiguracjaJęzyka.samogłoski +\
       konfiguracja.KonfiguracjaJęzyka.spółgłoski
     for wejście in wejścia:
+        # log.info(f"litera: {wejście}")
         ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="litery")
         if ile_dodano == 0:
             niepowodzenia.append((wejście, 1))
-    # for litera in konfiguracja.KonfiguracjaJęzyka.samogłoski + konfiguracja.KonfiguracjaJęzyka.spółgłoski:
-    #     if litera in istniejące_słowa or litera.isnumeric():
-    #         continue
-    #     czy_klejone = True
-    #     if litera in konfiguracja.KonfiguracjaJęzyka.jednoliterowe_wyrazy:
-    #         czy_klejone = False
-    #     czy_przedrostek = False
-    #     if litera in przedrostki:
-    #         czy_przedrostek = True
-    #     słowo = Słowo(litera,
-    #                   jest_przedrostkiem=czy_przedrostek,
-    #                   klejone=czy_klejone)
-    #     stenosłowa = generator.wygeneruj(litera,
-    #                                 limit_niedopasowania=0,
-    #                                 limit_prób=10)
-    #     dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #     udało_się = len(dodane) > 0
-    #     if not udało_się:
-    #         # log.debug(f"Nie udało się dla {litera}, dodaje specjalne")
-    #         nowe_stenosłowa = generator.dodaj_znaki_specjalne_do_słów(stenosłowa,
-    #                                                               limit_niedopasowania=3,
-    #                                                               limit_prób=10)
-    #         log.debug(f"{litera} dodane specjalne: {nowe_stenosłowa} {type(nowe_stenosłowa[0])}")
-    #         dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #         udało_się = len(dodane) > 0
-    #         if not udało_się:
-    #             log.error(f"Nie dodałem litery '{litera}'")
-    #         else:
-    #             istniejące_słowa.add(litera)
-    #     else:
-    #         istniejące_słowa.add(litera)
-    # niepowodzenia = []
-    połowiczne_powodzenia = []
-    niepowodzenia_przedrostków = []
-        
-    log.info(f"Wczytałem sylaby dla {ile_słów_wczytano} słów, generuję klawisze...")
-    for (wejście, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
-        ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="frekwencja_0")
+
+    
+    pisarz = Pisarz(args.slownik)
+    if not czytacz.sprawdź_czy_plik_istnieje(args.słowa_z_drzewa):
+        log.info(f"Plik {args.słowa_z_drzewa} nie istnieje, generuję sylaby wg frekwencji...")
+        postęp = 0
+        lista_par = []
+        frekwencje = SłownikDomyślny(lambda x: 1)
+        for (wejście, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
+            frekwencje[wejście] = frekwencja
+        log.info("Plik frekwencji wczytany, tworzę plik wejściowy dla binarnego drzewa sylab...")
+        for (słowo, sylaby) in sylaby_słowa.items():
+            lista_par.append((sylaby, frekwencje[słowo]))
+            postęp += 1
+            if postęp % 100000 == 0:
+                log.info(f"{postęp}: {słowo}")
+        leg.info("Plik wejściowy utworzony, generuję drzewo...")
+        drzewo = utwórz_drzewo_binarne_z_listy_par_sylaba_frekwencja(lista_par)
+        leg.info("Drzewo utworzone, zapisuję...")
+        pisarz.zapisz_surowe(args.słowa_z_drzewa, drzewo.następny())
+        log.info(f"Plik {args.słowa_z_drzewa} zapisany na dysku")
+    log.info(f"Czytam z pliku {args.słowa_z_drzewa}")
+    for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
+        if wejście.startswith('*'):
+            wejście = wejście[1:]
+            fabryka.uruchom_linie(wejście, nazwa_ustawień="rdzeń")
+            ile_dodano = 1
+        elif wejście.startswith('&'):
+            wejście = wejście[1:]
+            ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="przedrostki")
+        else:
+            ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="frekwencja_0")
         if ile_dodano == 0:
-            niepowodzenia.append((wejście, frekwencja))
-
-    #     if litery in istniejące_słowa or litery.isnumeric():
-    #         continue
-    #     czy_przedrostek = False
-    #     if litery in przedrostki:
-    #         czy_przedrostek = True
-    #     słowo = Słowo(litery,
-    #                   jest_przedrostkiem=czy_przedrostek)
-
-    #     stenosłowa = generator.wygeneruj(litery,
-    #                                         limit_niedopasowania=0,
-    #                                         limit_prób=15)
-    #     dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #     udało_się = len(dodane) > 0
-    #     if not udało_się:
-    #         # niepowodzenia.append((litery, frekwencja))
-    #         użyto_modyfikatorów = 0
-    #         nowe_stenosłowa = stenosłowa
-    #         while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #             nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #             dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #             udało_się = len(dodane) > 0
-    #             użyto_modyfikatorów += 1
-    #         if not udało_się:
-    #             stenosłowa = generator.wygeneruj(litery,
-    #                                              limit_niedopasowania=0,
-    #                                              limit_prób=10,
-    #                                              z_przedrostkiem=True)
-    #             dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #             udało_się = len(dodane) > 0
-    #             if not udało_się:
-    #                 # nowe_akordy = generator.dodaj_znaki_specjalne_do_słów(stenosłowa,
-    #                 #                                                       limit_niedopasowania=2,
-    #                 #                                                       limit_prób=15)
-    #                 użyto_modyfikatorów = 0
-    #                 nowe_stenosłowa = stenosłowa
-    #                 while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #                     nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #                     dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #                     udało_się = len(dodane) > 0
-    #                     użyto_modyfikatorów += 1
-    #                 if not udało_się:
-    #                     niepowodzenia.append((litery, frekwencja))
-    #                 else:
-    #                     istniejące_słowa.add(litery)
-    #             else:
-    #                 istniejące_słowa.add(litery)
-    #         else:
-    #             istniejące_słowa.add(litery)
-    #     else:
-    #         istniejące_słowa.add(litery)
-    #     numer_generacji += 1        
-    #     if numer_generacji % loguj_postęp_co == 0:
-    #         log.info(f"{numer_generacji}: {litery} - wygenerowano")
-    #     if numer_generacji % 100 == 0:
-    #         log.debug(f"{numer_generacji}: {litery} - wygenerowano")
+            niepowodzenia.append((wejście, 1))
 
 
-    log.info(f"Wczytałem {ile_przedrostków_wczytano} przedrostków, generuję...")
-    for przedrostek in przedrostki:
-        ile_dodano = fabryka.uruchom_linie(przedrostek, nazwa_ustawień="przedrostki")
-        if ile_dodano == 0:
-            niepowodzenia_przedrostków.append((przedrostek, 10))
-    #     if przedrostek in istniejące_słowa or przedrostek.isnumeric():
-    #         continue
-    #     słowo = Słowo(przedrostek, jest_przedrostkiem=True)
-    #     stenosłowa = generator.wygeneruj(przedrostek,
-    #                                  limit_niedopasowania=1,
-    #                                  limit_prób=10,
-    #                                  z_gwiazdką=False)
-    #     # if przedrostek == "by":
-    #     #     log.error(f"prz {przedrostek}: {stenosłowa}")
-    #     dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #     udało_się = len(dodane) > 0
-    #     if not udało_się:
-    #         użyto_modyfikatorów = 0
-    #         nowe_stenosłowa = stenosłowa
-    #         while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #             nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #             dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #             udało_się = len(dodane) > 0
-    #             użyto_modyfikatorów += 1
-    #         if not udało_się:
-    #             specjalne_stenosłowa = generator.dodaj_znaki_specjalne_do_słów(stenosłowa,
-    #                                                                           limit_niedopasowania=3)
-    #             dodane = generator.dodaj_słowa_do_słownika(słowo,
-    #                                                         specjalne_stenosłowa)
-    #             if not len(dodane) > 0:
-    #                 niepowodzenia_przedrostków.append((przedrostek, 10))
-    #             else:
-    #                 istniejące_słowa.add(przedrostek)
-    #         else:
-    #             istniejące_słowa.add(przedrostek)
-    #     else:
-    #         istniejące_słowa.add(przedrostek)
-    #     numer_generacji += 1
-    # niepowodzenia_przedrostków_nowe = []
-    # for przedrostek, freq in niepowodzenia_przedrostków:
-    #     stenosłowa = generator.wygeneruj(przedrostek,
-    #                                         limit_niedopasowania=3,
-    #                                         limit_prób=10,
-    #                                         bez_środka=True,
-    #                                         z_gwiazdką=True)
-    #     dodane = generator.dodaj_słowa_do_słownika(słowo,
-    #                                                 stenosłowa)
-    #     if len(dodane) == 0:
-    #         log.error(f"Nie dodano przedrostka {przedrostek}")
-    #         niepowodzenia_przedrostków_nowe.append((przedrostek, freq))
-    #     else:
-    #         istniejące_słowa.add(przedrostek)
-    # niepowodzenia_przedrostków = niepowodzenia_przedrostków_nowe
+    # log.info(f"Wczytałem sylaby dla {ile_słów_wczytano} słów, generuję klawisze...")
 
-    # ## Teraz z przedrostkami
-    for limit_niedopasowania in range(max_niedopasowanie):
-        log.info(f"Pętla {limit_niedopasowania + 1} z {max_niedopasowanie}")
+    # for (wejście, frekwencja) in czytacz.czytaj_z_pliku_frekwencji(args.frekwencja):
+    #     ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="frekwencja_0")
+    #     if ile_dodano == 0:
+    #         niepowodzenia.append((wejście, frekwencja))
+
+    # (przedrostki, ile_przedrostków_wczytano) = czytacz.wczytaj_słowa(log, args.przedrostki)
+    # log.info(f"Wczytałem {ile_przedrostków_wczytano} przedrostków, generuję...")
+    # for przedrostek in przedrostki:
+    #     ile_dodano = fabryka.uruchom_linie(przedrostek, nazwa_ustawień="przedrostki")
+    #     if ile_dodano == 0:
+    #         niepowodzenia_przedrostków.append((przedrostek, 10))
+
+
+    ## Teraz z przedrostkami
+    for limit_niedopasowania in range(1, max_niedopasowanie):
+        log.info(f"Pętla {limit_niedopasowania + 1} z {max_niedopasowanie - 1}")
         nowe_niepowodzenia = []
         nazwa_ustawień=f"frekwencja_{limit_niedopasowania}"
 
@@ -240,99 +144,28 @@ def main():
             if ile_dodano == 0:
                 nowe_niepowodzenia.append((niepowodzenie, frekwencja))
         niepowodzenia = nowe_niepowodzenia
-
-    #         if litery in istniejące_słowa or litery.isnumeric():
-    #             continue
-    #         słowo = Słowo(litery)
-
-    #         stenosłowa = generator.wygeneruj(litery, limit_niedopasowania, limit_prób=10)
-    #         dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #         udało_się = len(dodane) > 0
-    #         if not udało_się:
-    #             użyto_modyfikatorów = 0
-    #             nowe_stenosłowa = stenosłowa
-    #             while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #                 nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #                 dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #                 udało_się = len(dodane) > 0
-    #                 użyto_modyfikatorów += 1
-    #             stenosłowa = generator.wygeneruj(litery,
-    #                                                 limit_niedopasowania,
-    #                                                 z_przedrostkiem=True,
-    #                                                 limit_prób=10)
-    #             dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #             udało_się = len(dodane) > 0
-    #             if not udało_się:
-    #                 użyto_modyfikatorów = 0
-    #                 nowe_stenosłowa = stenosłowa
-    #                 while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #                     nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #                     dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #                     udało_się = len(dodane) > 0
-    #                     użyto_modyfikatorów += 1
-    #                 if not udało_się:
-    #                     nowe_niepowodzenia.append((litery, frekwencja))
-    #             else:
-    #                 istniejące_słowa.add(litery)
-    #         else:
-    #             istniejące_słowa.add(litery)
-    #         numer_generacji += 1        
-    #         if numer_generacji % loguj_postęp_co == 0:
-    #             log.info(f"{numer_generacji}: {słowo} - wygenerowano")
-    #         if numer_generacji % 100 == 0:
-    #             log.debug(f"{numer_generacji}: {słowo} - wygenerowano")
-    #     niepowodzenia = nowe_niepowodzenia
-    # ## Za pętlą
     log.info(f"Dodano {len(słownik) - linie_bazy} słów.")
 
 
-    log.info("Dodaję słowa bez podanej częstotliwości")
-    nazwa_ustawień=f"frekwencja_{max_niedopasowanie}"
-    for słowo in sylaby_słowa.keys():
-        ile_dodano = fabryka.uruchom_linie(słowo, nazwa_ustawień)
-        if ile_dodano == 0:
-            niepowodzenia.append((słowo, 1))
+    # log.info("Dodaję słowa bez podanej częstotliwości")
+    # nazwa_ustawień=f"frekwencja_{max_niedopasowanie}"
+    # for słowo in sylaby_słowa.keys():
+    #     ile_dodano = fabryka.uruchom_linie(słowo, nazwa_ustawień)
+    #     if ile_dodano == 0:
+    #         niepowodzenia.append((słowo, 1))
 
-    # istniejące_słowa = słownik.keys()
-    #     if litery in istniejące_słowa or litery.isnumeric():
-    #         continue
-    #     słowo = Słowo(litery)
-    #     stenosłowa = generator.wygeneruj(litery,
-    #                                         limit_niedopasowania=max_niedopasowanie,
-    #                                         limit_prób=10)
-    #     dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #     udało_się = len(dodane) > 0
-    #     if not udało_się:
-    #         użyto_modyfikatorów = 0
-    #         nowe_stenosłowa = stenosłowa
-    #         while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #             nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #             dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #             udało_się = len(dodane) > 0
-    #             użyto_modyfikatorów += 1
 
-    #         stenosłowa = generator.wygeneruj(litery,
-    #                                             limit_niedopasowania=max_niedopasowanie,
-    #                                             limit_prób=10,
-    #                                             z_przedrostkiem=True)
-    #         dodane = generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
-    #         udało_się = len(dodane) > 0
-    #         if not udało_się:
-    #             użyto_modyfikatorów = 0
-    #             nowe_stenosłowa = stenosłowa
-    #             while not udało_się and użyto_modyfikatorów < max_słów_na_akord:
-    #                 nowe_stenosłowa = generator.dodaj_modyfikator(nowe_stenosłowa)
-    #                 dodane = generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
-    #                 udało_się = len(dodane) > 0
-    #                 użyto_modyfikatorów += 1
-    #             if not udało_się:
-    #                 niepowodzenia.append((litery, frekwencja))
-    #     numer_generacji += 1
-    #     if numer_generacji % loguj_postęp_co == 0:
-    #         log.info(f"{numer_generacji}: {litery} - wygenerowano")
-    #     if numer_generacji % 100 == 0:
-    #         log.debug(f"{numer_generacji}: {litery} - wygenerowano")
+    log.info(f"Dodano {len(słownik) - linie_bazy} słów w {time.time() - czas_start} sekund.")
+    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia)} słów.")
+    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_przedrostków)} przedrostków.")
 
+    log.info("Słownik utworzony, zapisuję...")
+    log.info(f"Zapisuję porażki")
+    pisarz.zapisz_porażki(niepowodzenia+niepowodzenia_przedrostków)
+    fabryka.zapisz_rezultaty(pisarz)
+
+    log.info("Fajrant")
+            
 
     # log.info("Analizuję częstotliwość występowania fonemów...")
     # zanalizowane = 0
@@ -370,19 +203,6 @@ def main():
     #     log.info(f"{i:2}: {ki:5}|{wi:10}")
     #     i += 1
 
-
-    log.info(f"Dodano {len(słownik) - linie_bazy} słów w {time.time() - czas_start} sekund.")
-    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia)} słów.")
-    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_przedrostków)} przedrostków.")
-
-    log.info("Słownik utworzony, zapisuję...")
-    pisarz = Pisarz(args.slownik)
-    fabryka.zapisz_rezultaty(pisarz)
-
-    log.info(f"Zapisuję porażki")
-    pisarz.zapisz_porażki(niepowodzenia+niepowodzenia_przedrostków)
-    log.info("Fajrant")
-            
 
 #  TODO: usystematyzować to wszystko
 #  class Czytacz

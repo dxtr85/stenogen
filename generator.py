@@ -1,3 +1,4 @@
+from pomocnicy import SłownikDomyślny
 from klawiatura import Klawiatura, RękaLewa, RękaPrawa, Akord, StenoSłowo
 from jezyk import Słowo
 from collections import defaultdict
@@ -15,7 +16,7 @@ tyldogwiazdka = "~*"
 slash = "/"
 
 class Generator():
-    def __init__(self, log, język, klawiatura, konfiguracja, słownik_ostateczny, sylaby_słowa):
+    def __init__(self, log, język, klawiatura, konfiguracja, słownik_ostateczny): #, sylaby_słowa):
         self.log = log
         self.konfiguracja = konfiguracja
         self.język = język
@@ -23,27 +24,30 @@ class Generator():
         # {tekst: {"Kombinacja": niedopasowanie}}
         # self.język = język
         self.słownik = słownik_ostateczny
-        self.sylaby_słowa = sylaby_słowa
-        # self.lewe_wszystkie = "LR~*"
-        # self.prawe_wszystkie = "~*CR"
+        # self.sylaby_słowa = sylaby_słowa
+        self.sylaby_słowa = SłownikDomyślny(lambda x: self.język.pseudo_sylabizuj(x))
         self.kombinacje = dict()
         self.przedrostki = set()
+        self.rdzenie = dict()
         self._zainicjalizuj_kombinacje()
         self.loguj_postęp_co = 10000 # Będzie log po tylu wygenerowanych słowach
-        self.postęp = 0
-        self.minimum_kombinacji_per_słowo = 1
+        # self.postęp = 0
+        self.minimum_kombinacji_per_słowo = konfiguracja.KonfiguracjaGeneratora.minimum_kombinacji_per_słowo
         self.niepowodzenia = []
         self.analizowane_fonemy = defaultdict(lambda: 0)
         self.analizowane_końcówki = defaultdict(lambda: 0)
         self.modyfikator = Akord(self.log, "~", 0)
         self.dbg = []
 
+    def dodaj_rdzeń(self, tekst, kombinacja):
+        self.rdzenie[tekst] = kombinacja
+
     def _zainicjalizuj_kombinacje(self):
-        self.log.info("Inicjalizuję bazę generatora")
+        self.log.info(f"Inicjalizuję bazę generatora ze słownika z {len(self.słownik)} wpisów")
         for (tekst, kombinacje) in self.słownik.items():
             for kombinacja in kombinacje.keys():
                 self.kombinacje[kombinacja] = Słowo(tekst)
-        self.log.info("Baza zainicjalizowana w pamięci")
+        self.log.info(f"Baza zainicjalizowana w pamięci ({len(self.kombinacje)} wpisów)")
 
     def dopasuj_słowa(self, słowo, stenosłowa):
         # if słowo.litery in self.dbg:
@@ -90,6 +94,7 @@ class Generator():
                 if ilość_kombinacji_właściciela <= self.minimum_kombinacji_per_słowo:
                     continue
                 else:
+                    # self.log.info(f"KW: {kombinacje_właściciela} {obecny_właściciel} {słowo.litery}")
                     obecne_niedopasowanie = kombinacje_właściciela[znaki]
                     #  Nie zabieramy kombinacji jeśli ich dopasowanie jest takie samo
                     # if obecne_niedopasowanie <= niedopasowanie:
@@ -105,7 +110,9 @@ class Generator():
                             minimalne_niedopasowanie_u_właściciela = obce_niedopasowanie -1
                             break
                     if obecne_niedopasowanie > minimalne_niedopasowanie_u_właściciela:
+                        # self.log.info(f"odbieram kombo, przed: {self.słownik[obecny_właściciel]}")
                         kombinacje_właściciela.pop(znaki)
+                        # self.log.info(f"odbieram kombo, przed: {self.słownik[obecny_właściciel]}")
                         self.słownik[słowo.litery][znaki] = niedopasowanie
                         self.kombinacje[znaki] = słowo
                         słowa_dodane.append(stenosłowo)
@@ -118,7 +125,7 @@ class Generator():
                          bez_środka=False,
                          z_przedrostkiem=False,
                          z_gwiazdką=False):
-        self.postęp += 1
+        # self.postęp += 1
 
         # Dla 'w', 'z'
         if not sylaby:
@@ -137,11 +144,13 @@ class Generator():
             self.log.debug(f"Szukam dla: {słowo} - {sylaby}")
         if z_przedrostkiem:
             akordy = []
-            (przedrostek, sylaby) = self.znajdź_przedrostek_dla_sylab(sylaby)
-            # self.log.debug(f"Z przedrostkiem {przedrostek}")
+            (przedrostek, sylaby, steno_przedrostki) = self.znajdź_przedrostek_dla_sylab(sylaby)
+            if not przedrostek:
+                return akordy
+            # self.log.info(f"Z przedrostkiem {przedrostek}")
             podsłowo = ''.join(sylaby)
             if podsłowo in self.słownik.keys():
-                # self.log.debug(f"Z podsłowem {podsłowo}")
+                # self.log.info(f"Z podsłowem {podsłowo}")
                 steno_podsłowa = self.stenosłowa_dla_liter(podsłowo)
                 # self.log.debug(f"Dostałem podakordy: {steno_podsłowa}")
                 for akord in steno_podsłowa:
@@ -158,7 +167,6 @@ class Generator():
                     # else:
                     #     słowo = self.kombinacje[f"{akord}"]
                     # if słowo.klejone:
-                # self.log.info(f"ako pod {podsłowo}: {steno_podsłowa[0]}")
                 # self.log.info(f"w słowniku: {self.słownik[podsłowo]}")
                 # self.log.info(f"{podsłowo} ma akordy: {steno_podsłowa}")
                 # self.log.info(f"ako pod: {steno_podsłowa} dla {słowo}({przedrostek}/{podsłowo})")
@@ -192,7 +200,8 @@ class Generator():
         if z_przedrostkiem and przedrostek:
             nowe_akordy = []
             # for wygenerowany_akord in akordy:
-            steno_przedrostki = self.stenosłowa_dla_liter(przedrostek)
+            if not steno_przedrostki:
+                steno_przedrostki = self.stenosłowa_dla_liter(przedrostek)
                 ## TODO: przypadek gdy więcej kombinacji ma takie samo niedopasowanie
                 ## wtedy jedna z tych kombinacji może zostać zabrana do innego słowa
             ile_przedrostkow_uwzględnić = min(self.minimum_kombinacji_per_słowo,\
@@ -213,10 +222,10 @@ class Generator():
                     #         multi_akord = [multi_akord, wygenerowany_akord]
                 nowe_akordy += multi_akord
             # self.log.info(f"Zwracam z przedrostkiem: {nowe_akordy}")
-            return nowe_akordy
+            return nowe_akordy #.sort(key=lambda x: x.niedopasowanie)
         if słowo in self.dbg:
             self.log.debug(f"zwracam dla {słowo}: {akordy}")
-        return akordy
+        return akordy #.sort(key=lambda x: x.niedopasowanie)
 
     def dodaj_modyfikator(self, słowa):
         nowe_słowa = []
@@ -301,15 +310,21 @@ class Generator():
         sklejone_sylaby = sylaby[0]
         najdłuższy_przedrostek = None
         indeks_pozostałych_sylab = 0
-        if sklejone_sylaby in self.przedrostki:
+        rdzenie = self.rdzenie.keys()
+        if sklejone_sylaby in self.przedrostki or\
+          sklejone_sylaby in rdzenie:
             najdłuższy_przedrostek = sklejone_sylaby
             indeks_pozostałych_sylab = 1
         for i in range(1, len(sylaby)):
             sklejone_sylaby += sylaby[i]
-            if sklejone_sylaby in self.przedrostki:
+            if sklejone_sylaby in self.przedrostki or\
+              sklejone_sylaby in rdzenie:
                 najdłuższy_przedrostek = sklejone_sylaby
                 indeks_pozostałych_sylab = i + 1
-        return (najdłuższy_przedrostek, sylaby[indeks_pozostałych_sylab:])
+        steno_słowo = None
+        if najdłuższy_przedrostek in rdzenie:
+            steno_słowo = [self.rdzenie[najdłuższy_przedrostek]]
+        return (najdłuższy_przedrostek, sylaby[indeks_pozostałych_sylab:], steno_słowo)
 
     def stenosłowa_dla_liter(self, litery):
         stenosłowa = []

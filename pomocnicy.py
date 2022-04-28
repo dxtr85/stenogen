@@ -24,13 +24,16 @@ class Czytacz:
     def __init__(self):
         pass
 
+    def sprawdź_czy_plik_istnieje(self, plik):
+        return os.path.exists(plik)
+
     def stwórz_katalogi_jeśli_trzeba(self, katalogi):
         for plik_wyjściowy in katalogi:
             folder = os.path.dirname(plik_wyjściowy)
             if folder != '':
                 os.makedirs(folder, exist_ok=True)
 
-    def wczytaj_bazę_do_słownika(self, baza):
+    def wczytaj_bazę_do_słownika(self, log, baza):
         słownik = collections.defaultdict(dict)
         numer_linii = 0
         for linia in self.czytaj_linie_pliku(baza):
@@ -42,7 +45,8 @@ class Czytacz:
               or linia.startswith('}'):
                 continue
             (kombinacja, wyraz) = self.czytaj_znaki_między_cudzysłowem(linia)
-            słownik[wyraz] = {kombinacja: 0}
+            słownik[wyraz][kombinacja] = 0
+        log.info(f"Wczytałem {numer_linii} linii tworząc słownik z {len(słownik)} wpisów. ")
         return (słownik, numer_linii)
 
     def wczytaj_słowa(self, log, plik_ze_słowami):
@@ -67,6 +71,19 @@ class Czytacz:
             słowo = linia.split('"')[1]
             frekwencja = int(linia.split(',')[1])
             yield (słowo, frekwencja)
+
+    def czytaj_sylaby(self, plik):
+        for linia in self.czytaj_linie_pliku(plik):
+            linia = linia.strip()
+            if linia.startswith('#'):
+                continue
+            (tekst, sylaby) = linia.split(',')
+            sylaby = sylaby.strip().split('=')
+            # sylaby = sylaby
+            # sylaby_słowa[tekst] = sylaby #klawisze_słowa
+            # if numer_linii % 10000 == 0 and numer_linii != 0:
+            #     log.info(f'Przetwarzanie linii {numer_linii}: {linia}')
+            yield (tekst, sylaby)
 
     def wczytaj_konfigurację(self, ścieżka_do_pliku):
         spec = importlib.util.spec_from_file_location("Konfiguracja", ścieżka_do_pliku)
@@ -136,6 +153,13 @@ class Pisarz:
                 plik_wynikowy.write(nowa_linia + linia)
                 nowa_linia = przecinek
             plik_wynikowy.write('}\n')
+
+    def zapisz_surowe(self, plik, linie):
+        przecinek = ",\n"
+        nowa_linia = nic
+        with open(plik, 'w', buffering=1024000) as plik_wynikowy:
+            for linia in linie:
+                plik_wynikowy.write(linia)
 
 
 def dzielniki_dla_słowa_o_długości(n):

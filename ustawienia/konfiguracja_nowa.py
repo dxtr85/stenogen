@@ -1,7 +1,7 @@
 from enum import Enum
 
 class KonfiguracjaGeneratora:
-    pass
+    minimum_kombinacji_per_słowo = 2
 
 class KonfiguracjaJęzyka:
     spółgłoski = ['b', 'c', 'ć', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'p', 'q', 'r', 's', 'ś', 't', 'v', 'w', 'x', 'z', 'ź', 'ż']
@@ -112,7 +112,7 @@ class KonfiguracjaJęzyka:
 
 
 class KonfiguracjaKlawiatury:
-    kolejność = '/XFZSKTPVLRJE-~*UAICRLBSGTWOY'
+    kolejność = '#/XFZSKTPVLRJE-~*UAICRLBSGTWOY'
     tylda = "~"
     gwiazdka = "*"
     myślnik = "-"
@@ -169,6 +169,8 @@ class UstawienieFabryki:
                  czy_klejone=False,
                  z_przedrostkiem=False,
                  sprawdzaj_czy_jest_przedrostkiem=False,
+                 jest_przedrostkiem=False,
+                 jest_rdzeniem=False,
                  limit_niedopasowania=0,
                  limit_prób=10):
         self.typ_generacji= typ_generacji
@@ -178,6 +180,8 @@ class UstawienieFabryki:
         self.czy_klejone = czy_klejone
         self.z_przedrostkiem = z_przedrostkiem
         self.sprawdzaj_czy_jest_przedrostkiem = sprawdzaj_czy_jest_przedrostkiem
+        self.jest_przedrostkiem = jest_przedrostkiem
+        self.jest_rdzeniem = jest_rdzeniem
         self.limit_niedopasowania = limit_niedopasowania
         self.limit_prób = limit_prób
 
@@ -187,6 +191,7 @@ class KonfiguracjaFabrykiClass:
         self.loguj_postęp_co = 1000
         self.max_słów_na_akord = 7
         self.zawsze_startuj_wszystkie_linie = True
+        self.minimum_kombinacji_dodanych_per_słowo = 3
 
 KonfiguracjaFabryki = KonfiguracjaFabrykiClass()
 KonfiguracjaFabryki.ustawienia_fabryki["litery"] =\
@@ -417,9 +422,25 @@ KonfiguracjaFabryki.ustawienia_fabryki["frekwencja_10"] =\
 
 KonfiguracjaFabryki.ustawienia_fabryki["przedrostki"] =\
   [UstawienieFabryki(limit_niedopasowania=1,
+                     jest_przedrostkiem=True,
                      limit_prób=10),
    UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZModyfikatorami,
+                     jest_przedrostkiem=True,
                      tylko_wyniki_porażek_na_wejściu=True),
    UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
+                     jest_przedrostkiem=True,
                      tylko_wyniki_porażek_na_wejściu=True,
                      limit_niedopasowania=3)]
+
+KonfiguracjaFabryki.ustawienia_fabryki["rdzeń"] =\
+  [UstawienieFabryki(limit_prób=15,
+                     limit_niedopasowania=8,
+                     jest_rdzeniem=True),
+   UstawienieFabryki(typ_generacji=TypyGeneracji.SylabizowaniePoTrzy,
+                     limit_niedopasowania=3,
+                     jest_rdzeniem=True,
+                     limit_prób=5),
+   UstawienieFabryki(typ_generacji=TypyGeneracji.SylabizowaniePoDwie,
+                     limit_niedopasowania=3,
+                     jest_rdzeniem=True,
+                     limit_prób=5)]
