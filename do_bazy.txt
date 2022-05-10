@@ -1,0 +1,264 @@
+
+kropka (.),    K-GW
+przecinek (,), P-GW
+dwukropek (:), FT-GW
+średnik (;),   S-GW
+wykrzyknik (!), V-GW
+pytajnik (?),   PV-GW
+wielokropek (…),KV-GW
+
+myślnik (reprezentowany przez półpauzę: – lub pauzę: — , często niezgodnie z normami typograficznymi,
+przez dywiz: - [5]),  KP-GW, P-TO
+nawiasy (   
+zwykłe: ( TV      ),   LS
+kwadratowe: [ STV ],   LST
+klamrowe: { TVR  } lub CLS
+ostrokątne: < TVL- >)  LSR
+oraz znaki cudzysłowu (
+podwójne apostrofowe: „ SP-   ”, -LW
+pojedyncze apostrofowe: ‘ SPL- ’ -CLW
+
+oraz szewrony stosowane w dwóch kombinacjach:
+«  ZSV    »   BTW
+
+
+
+
+{PLOVER:ADD_TRANSLATION}
+Opens a translation window where you can enter a stroke and translation text to create a new dictionary entry.
+
+{PLOVER:SUSPEND}	PHRO*F (think PLOF for "PLover OFf")	Stop translating steno. With a keyboard machine, you will be able to type normally again.
+Enable Output	{PLOVER:RESUME}	PHRO*PB (think PLON for "PLover ON")	Re-enable Plover's output. You can write this stroke to switch back from your keyboard into steno mode.
+Toggle Output	{PLOVER:TOGGLE}	PHROLG (think PLOLG, for PLOver toGGLe)	Toggle between output being enabled and disabled.
+Look Up Stroke	{PLOVER:LOOKUP}	PHR*UP	Open a search dialog that you write a translation into to get a list of entries in your dictionaries.
+Suggestions	{PLOVER:SUGGESTIONS}	PHROGS (think PLOSHUN) for PLOver suggesTION)	Open and focus the plover suggestions window which will suggest alternative ways of writing
+Configure	{PLOVER:CONFIGURE}	PHROFG (think PLOFG, for PLOver conFiG)	Open and focus the Plover configuration window.
+Focus	{PLOVER:FOCUS}	PHROFBGS (think PLOFKS, for PLOver focus)	Open and focus the main Plover window.
+Quit	{PLOVER:QUIT}	PHROBGT (think PLOKT, for PLOver quit)	Quit Plover entirely.
+Set configuration	{PLOVER:SET_CONFIG:option:value}, {PLOVER:SET_CONFIG:option1:value1,option2:value2,...}		Set Plover config option.
+
+Capitalize Next Word
+{-|}
+
+"KPA*": "{^}{-|}" which omits a space and capitalizes the next word.
+
+Capitalize Last Word
+{*-|}
+
+Uncapitalize Next Word
+{>}
+
+Uncapitalize Last Word
+{*>}
+
+Carrying Capitalization
+{~|text} or {^~|text^} where the attach operator is optional and the text can be changed.
+In English, we have punctuation that doesn't get capitalized, but instead the next letter gets the capitalization. For example, if you end a sentence in quotes, the next sentence still starts with a capital letter! "You can't eat that!" The baby ate on.
+
+In order to support this, there is a special pre/in/suffix syntax that will "pass on" or "carry" the capitalized state. You might find this useful with quotes, parentheses, and words like 'til or 'cause.
+
+The default dictionary for Plover should use these operators where appropriate.
+
+{
+  "KW-GS": "{~|\"^}",
+  "KR-GS": "{^~|\"}",
+  "KA*US": "{~|'^}cause",
+  "PREPB": "{~|(^}",
+  "PR*EPB": "{^~|)}"
+}
+For a newline, the syntax would be {^~|\n^}.
+
+"KA*PS": "{MODE:CAPS}"
+
+ppercase Next Word
+{<}
+
+Uppercase Last Word
+{*<}
+
+Suppress Next Space
+{^^} (or {^})
+
+Manually Add a Space
+{^ ^}
+
+*($c)}: Standard English dollars
+23{*($c)} → $23
+2000.5{*($c)} → $2,000.50
+{*($c CAD)}: You can include other text, e.g. when specifying a currency's country
+100{*($c CAD)} → $100 CAD
+{*(c円)}: The symbol can be placed on either side of the number, which often happens in languages other than English and in certain regions.
+2345{*(c円)}: 2,345円
+
+{=regex/text_if_match/text_if_no_match}
+Conditional translation depending on the following text. Outputs text_if_match if the following text matches the regex, otherwise outputs text_if_no_match. Regex is case-sensitive. For example, {=[AEIOUaeiou]/an/a} outputs "a" unless the next word starts with a vowel, in which case it outputs "an".
+
+
+
+################################################################################
+Command/macro/meta	Equivalent
+{*}	=retrospective_toggle_asterisk
+{*!}	=retrospective_delete_space
+{*?}	=retrospective_insert_space
+{*+}	=repeat_last_stroke
+{^}	{:attach}
+{^word}	{:attach:^word}
+{word^}	{:attach:word^}
+{^word^}	{:attach:word}
+{&a}	{:glue:a}
+{-|}	{:case:cap_first_word}
+{*-|}	{:retro_case:cap_first_word}
+{~|word}	{:carry_capitalize:word}
+{<}	{:case:upper_first_word}
+{*<}	{:retro_case:upper_first_word}
+{>}	{:case:lower_first_char}
+{*>}	{:retro_case:lower_first_char}
+{*($c)}	{:retro_currency:$c}
+{#shift(a)}	{:key_combo:shift(a)}
+{PLOVER:LOOKUP}	{:command:LOOKUP}
+{MODE:CAPS}	{:mode:CAPS}
+{.}	{:stop:.}
+{,}	{:comma:,}
+{$}	{:word_end}
+
+
+\n or \r for line breaks.
+\t for tabs.
+{^\n^}{-|}
+This translation would create a line break without spacing and then capitalize the next word. It can be removed with the asterisk key.
+
+{^\t^}
+This translation presses the tab key without any other spacing. It can be undone with the asterisk key.
+
+Undo / Delete Last Stroke
+=undo
+
+Repeat Last Stroke
+{*+}
+
+
+Toggle asterisk
+{*}
+
+A stroke mapping to this macro will toggle the asterisk key on the last stroke entered. For example, if you had this stroke in your dictionary as Number Bar + Asterisk, "#*": "{*}", when you write KAT/#* it will behave as if you wrote KA*T.
+
+Toggle asterisk {*} is useful for when you notice that you should have included an asterisk in your last stroke. For example, you wanted to write the name "Mark" (a person's name), but you wrote "mark" (the noun/verb). At this point, you can use Toggle asterisk {*} to correct it. You wouldn't have to erase the word and re-stroke it (this time, with you including the missing the asterisk).
+
+Suggested stroke: #*
+
+
+Retroactively Add Space
+{*?}
+
+A stroke mapping to this macro will add a space between your last stroke and the one before that,
+
+
+Retroactively Delete Space
+{*!}
+
+
+
+################################################################################
+
+{#a b c d} will send "abcd" and will not affect Plover's text formatting or asterisk undo-buffer.
+Shift	Shift_L, Shift_R, shift
+Control	Control_L, Control_R, control
+Alt	Alt_L, Alt_R, alt, option
+Super	Super_L, Super_R, super, windows, command
+
+Letters	a, b, c, d, e, f, g, h, i, j, k, l, m, n, o, p, q, r, s, t, u, v, w, x, y, z
+Accented Letters (international layouts)	udiaeresis, eacute, etc.
+Numbers	0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+Control Keys	Escape, Tab, Caps_Lock, space, BackSpace, Delete, Return, etc.
+F-Keys	F1, F2, F3, F4, F5, F6, F7, F8, F9, F10, F11, F12
+Common Named Keys	= equal
+- minus
+[ bracketleft
+] bracketright
+/ slash
+\ backslash
+' quoteright
+, comma
+. period
+; semicolon
+~ asciitilde
+^ asciicircum
+` quoteleft
+…and more
+Media Keys	Common: AudioRaiseVolume, AudioLowerVolume, AudioMute, AudioNext, AudioPrev, AudioStop, AudioPlay, AudioPause, Eject
+Mac: MonBrightnessUp, MonBrightnessDown, KbdBrightnessUp, KbdBrightnessDown
+Windows: Back, Forward, Refresh
+Linux: XF86 key names are supported, for example XF86_MonBrightnessUp - refer to the definition file in python-xlib for the key names.
+
+
+"STPH-G": "{#right}" — right arrow on the keyboard, for moving the cursor to the right once
+"SKWR-G": "{#shift(right)}" — shift and right arrow on the keyboard, for selecting one character
+"SKWR-BG": "{#control(shift(right))}" — shift, control, and right arrow on the keyboard, for selecting one word to the right on Windows/Linux
+"SKWR-BG": "{#option(shift(right))}" — option (alt), control, and right arrow on the keyboard, for selecting one word to the right on Mac
+These next strokes are not particularly useful, but they show you what you can do with the command syntax:
+
+"TKAO*UP": "{#control(c v v v)}" — copy, then paste 3 times
+"SKPH-Z": "{#control(z shift(z))" — program-dependent, but possibly "undo/redo". Notice how the first z has only the control operator, and the second has both the control and the shift operator.
+Commands are case insensitive - adding capitals will not affect the output. {#control(z shift(z)) is the same as "{#CONTROL_L(Z SHIFT(Z))}"
+
+
+
+Symbol	Escaped Form
+\	\\
+{	\{
+}	\}
+
+
+JSON	Plover show	Plover input	Plover output
+"ab"	ab	ab	<a> <b>
+"\\{"	\{	\{	<{>
+"\\\\{"	\\{	\\{	<\> <{>
+"\""	"	"	<">
+"\\"	\	\	<\>
+"\\\\"	\\	\\	<\> <\>
+"\\\\\\"	\\\	\\\	<\> <\> <\>
+"\n"	\n	\n	<\n>
+"\\n"	\\n	\\n	<\> <n>
+"\\x"	\x	\x	<\> <x>
+"\\\n"	\\n	(none)	<\> <\n>
+"\\\\n"	\\\n	\\\n	<\> <\> <n>
+
+
+You can use the keyboard shortcut syntax ({#}) if you want a stroke that effectively does nothing. For example: a null or canceled stroke, which doesn't affect formatting, doesn't output anything, and cannot be "undone" with the asterisk key. A stroke mapped to {#} will effectively do nothing but show up in your logs.
+
+{#} an effective "null" stroke.
+
+
+{MODE:} is the mode operator
+
+{MODE:RESET}: Reset the case and space character. We recommended this for getting out of any custom output mode. For example: "R-R": "{^~|\n^}{MODE:RESET}" and "TPEFBG": "{#escape}{MODE:RESET}"
+{MODE:RESET_CASE}: Exit caps, lower, or title case.
+{MODE:RESET_SPACE}: Use spaces as normal.
+
+{MODE:CAPS}	THE QUICK BROWN FOX JUMPS OVER THE LAZY DOG.
+{MODE:TITLE}	The Quick Brown Fox Jumps Over The Lazy Dog.
+{MODE:LOWER}	the quick brown fox jumps over the lazy dog.
+{MODE:CAMEL}	theQuickBrownFoxJumpsOverTheLazyDog.
+{MODE:SNAKE}	The_quick_brown_fox_jumps_over_the_lazy_dog.
+
+{MODE:SET_SPACE:}	Thequickbrownfoxjumpsoverthelazydog.
+{MODE:SET_SPACE:-}	The-quick-brown-fox-jumps-over-the-lazy-dog.
+{MODE:SET_SPACE:😁}	The😁quick😁brown😁fox😁jumps😁over😁the😁lazy😁dog.
+
+
+{
+"PVR-SGW":"{PLOVER:LOOKUP}",  # wyszukaj w słowniku
+"PVR-STW":"{PLOVER:CONFIGURE}", # konfiguruj
+"PVR-GW":"{PLOVER:FOCUS}",  # przełącz na okno Plover
+"PVR-WY":"{PLOVER:QUIT}",    # zakończ plover
+"FT-":"{*-|}",              # poprzednie z dużej
+"VL-GW":"{MODE:CAPS}",        # wszystkie duże
+"-RBTW":"{<}",                # następne z dużej
+"XZT-":"{*<}",      # poprz z dużej
+"-CLBS":"{>}",     # nast z małej
+"KPLR":"{*>}",   # poprz z małej
+"#":"{*+}",        # powtórz ostatni akord
+"#*":"{*}",        # dołącz gwiazdke do ostatniego akordu
+"V-RSG":"{*?}",     # wstaw spacje pomiedzy ostatnimi akordami
+"R-RSG":"{*!}"    # usuń spacje pomiedzy ostatnimi akordami
+}

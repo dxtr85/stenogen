@@ -93,6 +93,9 @@ class Czytacz:
 
     def czytaj_linie_pliku(self, plik):
         for linia in open(plik, "r"):
+            linia = linia.strip()
+            if linia.startswith('#'):
+                continue
             yield linia
 
     def czytaj_znaki_między_cudzysłowem(self, wiersz):

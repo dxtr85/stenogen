@@ -674,7 +674,7 @@ class RękaLewa:
         self.palec_serdeczny = Palec(log, konfiguracja.palce_lewe[1])
         self.palec_środkowy = Palec(log, konfiguracja.palce_lewe[2])
         self.palec_wskazujący = Palec(log, konfiguracja.palce_lewe[3], ma_wspólne_klawisze=True)
-        self.kciuk_lewy = Palec(log, konfiguracja.palce_lewe[4], ma_wspólne_klawisze=True)
+        self.kciuk_lewy = Palec(log, konfiguracja.palce_lewe[4], ma_wspólne_klawisze=True, jest_kciukiem=True)
         self.kombinacje = {}  # Można tylko dodawać elementy do kombinacji, żeby IDki się zgadzały!!!
 
     def zwróć_wspólne_klawisze(self):
@@ -715,6 +715,8 @@ class RękaLewa:
         elif indeks in [4, 5]:
             if znak in self.palec_wskazujący.obsługiwane_klawisze:
                 return self.palec_wskazujący
+            return self.kciuk_lewy
+        elif indeks == 6:
             return self.kciuk_lewy
         else:
             self.log.debug(f"Lewa ręka nie ma palca dla indeksu: {znak} {indeks}")
@@ -818,11 +820,12 @@ class RękaPrawa:
         self.kciuk_prawy = Palec(log,
                                  konfiguracja.palce_prawe[0],
                                  ma_wspólne_klawisze=True,
-                                 wspólne_klawisze=wspólne_klawisze[-1:])
+                                 wspólne_klawisze=wspólne_klawisze[2:],
+                                 jest_kciukiem=True)  # nie wszystkie kombinacje dla kciuka dozwolone
         self.palec_wskazujący = Palec(log,
                                       konfiguracja.palce_prawe[1],
                                       ma_wspólne_klawisze=True,
-                                      wspólne_klawisze=wspólne_klawisze[:-1])
+                                      wspólne_klawisze=wspólne_klawisze[:2])
         self.palec_środkowy = Palec(log, konfiguracja.palce_prawe[2])
         self.palec_serdeczny = Palec(log, konfiguracja.palce_prawe[3])
         self.palec_mały = Palec(log, konfiguracja.palce_prawe[4])
@@ -954,35 +957,10 @@ class RękaPrawa:
         
 
 class Palec:
-    def __init__(self, log, obsługiwane_klawisze, ma_wspólne_klawisze=False, wspólne_klawisze=None):
+    def __init__(self, log, obsługiwane_klawisze, ma_wspólne_klawisze=False, wspólne_klawisze=None, jest_kciukiem=False):
         self.log = log
         # self.log.debug(f"Tworzę palec dla {obsługiwane_klawisze}")
-        self.wspierane_kombinacje = [nic,
-                                     obsługiwane_klawisze[0],
-                                     obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
-                                     obsługiwane_klawisze[1]]
-        if len(obsługiwane_klawisze) == 4:
-            self.wspierane_kombinacje = [nic,
-                                          obsługiwane_klawisze[0],
-                                          obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
-                                          obsługiwane_klawisze[0]+obsługiwane_klawisze[2],
-                                          obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
-                                          obsługiwane_klawisze[1],
-                                          obsługiwane_klawisze[1]+obsługiwane_klawisze[3],
-                                          obsługiwane_klawisze[2],
-                                          obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
-                                          obsługiwane_klawisze[3]]
-        elif len(obsługiwane_klawisze) == 3:  # Kciuki
-            self.wspierane_kombinacje = [nic,
-                                         obsługiwane_klawisze[0],
-                                         obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
-                                         obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
-                                         # obsługiwane_klawisze[0]+obsługiwane_klawisze[2],  # Nie na każdej klawiaturze
-                                         obsługiwane_klawisze[1],
-                                         obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
-                                         obsługiwane_klawisze[2]]
-            # self.log.info(f"Wspierany trójpalec: {self.wspierane_kombinacje}")
-        self.obsługiwane_klawisze = obsługiwane_klawisze
+        self.ustaw_wspierane_kombinacje(obsługiwane_klawisze, jest_kciukiem)
         self.klawisze = {}
         self.ma_wspólne_klawisze = ma_wspólne_klawisze
         if ma_wspólne_klawisze:
@@ -997,18 +975,32 @@ class Palec:
                 ile_klawiszy_obsługuje = len(self.obsługiwane_klawisze)
                 wspólne_klawisze = []
                 if ile_klawiszy_obsługuje == 4:
-                    klawisz = Klawisz(self.log,
+                    if jest_kciukiem:
+                        klawisz = Klawisz(self.log,
                                       self.obsługiwane_klawisze[2],
                                       indeks=5,
                                       waga=0,
                                       ile_palców_może_aktywować=2)
-                    self.klawisze[klawisz.znak] = klawisz
-                    klawisz = Klawisz(self.log,
+                        self.klawisze[klawisz.znak] = klawisz
+                        klawisz = Klawisz(self.log,
+                                      self.obsługiwane_klawisze[3],
+                                      indeks=6,
+                                      waga=0,
+                                      ile_palców_może_aktywować=2)
+                        self.klawisze[klawisz.znak] = klawisz
+                    else:
+                        klawisz = Klawisz(self.log,
+                                      self.obsługiwane_klawisze[2],
+                                      indeks=5,
+                                      waga=0,
+                                      ile_palców_może_aktywować=2)
+                        self.klawisze[klawisz.znak] = klawisz
+                        klawisz = Klawisz(self.log,
                                       self.obsługiwane_klawisze[3],
                                       indeks=5,
                                       waga=0,
                                       ile_palców_może_aktywować=2)
-                    self.klawisze[klawisz.znak] = klawisz
+                        self.klawisze[klawisz.znak] = klawisz
                 elif ile_klawiszy_obsługuje == 3:
                     klawisz = Klawisz(self.log,
                                       self.obsługiwane_klawisze[2],
@@ -1016,6 +1008,60 @@ class Palec:
                                       waga=0,
                                       ile_palców_może_aktywować=2)
                     self.klawisze[klawisz.znak] = klawisz
+
+    def ustaw_wspierane_kombinacje(self, obsługiwane_klawisze, jest_kciukiem):
+        ile_klawiszy = len(obsługiwane_klawisze)
+        if ile_klawiszy == 2:
+            self.wspierane_kombinacje = [nic,
+                                        obsługiwane_klawisze[0],
+                                        obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
+                                        obsługiwane_klawisze[1]]
+        elif ile_klawiszy == 4:
+            if not jest_kciukiem:
+                self.wspierane_kombinacje = [nic,
+                                            obsługiwane_klawisze[0],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
+                                            obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[1]+obsługiwane_klawisze[3],
+                                            obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
+                                            obsługiwane_klawisze[3]]
+            else:
+                self.wspierane_kombinacje = [nic,
+                                            obsługiwane_klawisze[0],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
+                                            obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[1]+obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
+                                            obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[2]+obsługiwane_klawisze[3],
+                                            obsługiwane_klawisze[3]]
+                
+        elif ile_klawiszy == 3:  # Kciuki
+            if jest_kciukiem:
+                self.wspierane_kombinacje = [nic,
+                                            obsługiwane_klawisze[0],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
+                                            # obsługiwane_klawisze[0]+obsługiwane_klawisze[2],  # Nie na każdej klawiaturze
+                                            obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[2]]
+            else:
+                self.wspierane_kombinacje = [nic,
+                                            obsługiwane_klawisze[0],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[0]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[1],
+                                            obsługiwane_klawisze[1]+obsługiwane_klawisze[2],
+                                            obsługiwane_klawisze[2]]
+            # self.log.info(f"Wspierany trójpalec: {self.wspierane_kombinacje}")
+        self.obsługiwane_klawisze = obsługiwane_klawisze
 
     def zwróć_wspólne_klawisze(self):
         # self.log.debug(f"Wołać tylko z ręki lewej!")
@@ -1094,14 +1140,16 @@ class Palec:
 
         if not klawisz_do_deaktywacji:
             if ii in tekst:
-                self.log.debug(f"Opuszczam zmiękczenie 'i'")
+                # self.log.debug(f"Opuszczam zmiękczenie '{ii}'")
                 return tekst.replace(ii, nic)
-            ## Lepsza metoda zamiast dorzucania tyldy/gwiazdki to dokładać domyfikator do istniejącej kombinacji
-            self.log.debug(f"Nie wiem jaki klawisz deaktywować: {[k.znak for k in self.klawisze.values() if k.waga>0]}")
+            ## Lepsza metoda zamiast dorzucania tyldy/gwiazdki to dokładać modyfikator do istniejącej kombinacji
+            self.log.debug(f"{tekst}: Nie wiem jaki klawisz deaktywować: {[k.znak for k in self.klawisze.values() if k.waga>0]}")
             return tekst  # To się nie powinno zdarzyć
         else:
             # klawisz_do_deaktywacji.waga = 0 # Kombinacje stają się niekompletne! (OK?)
-            return tekst.replace(klawisz_do_deaktywacji.znak, nic)
+            nowy_tekst = tekst.replace(klawisz_do_deaktywacji.znak, nic)
+            # self.log.debug(f"{tekst} zmieniłem na: {nowy_tekst}")
+            return nowy_tekst
 
     def spróbuj_opuścić_klawisz(self, klawisz):
         # self.log.debug(f"Próbuję opuścić {klawisz.znak} ({klawisz.ile_palców_może_aktywować}, {klawisz.ile_palców_obecnie_może_aktywować})")
@@ -1414,7 +1462,7 @@ class Akord:
         return f"{self.tekst_lewy}{jot if self.jest_jot else nic}{ee if self.jest_ee else nic}{tylda if self.jest_tylda else nic}{gwiazdka if self.jest_gwiazdka else nic}"
 
     def p_tekst(self):
-        return f"{uu if self.jest_uu else nic}{aa if self.jest_aa else nic}{ii if self.jest_ii else nic}{self.tekst_prawy}"
+        return f"{ii if self.jest_ii else nic}{aa if self.jest_aa else nic}{uu if self.jest_uu else nic}{self.tekst_prawy}"
 
     def __repr__(self):
         myślnik_wymagany = True

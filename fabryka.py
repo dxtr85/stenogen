@@ -56,7 +56,7 @@ class Fabryka():
         else:
             self.wejście = wejście
 
-        self.sprawdzaj_czy_jednowyrazowe_słowo = ustawienie.sprawdzaj_czy_jednowyrazowe_słowo
+        self.sprawdzaj_czy_jednoliterowe_słowo = ustawienie.sprawdzaj_czy_jednoliterowe_słowo
         self.jest_przedrostkiem = ustawienie.jest_przedrostkiem
         self.jest_rdzeniem = ustawienie.jest_rdzeniem
         self.czy_klejone = ustawienie.czy_klejone
@@ -104,13 +104,14 @@ class Fabryka():
             # self.wejście_dodane = True
             # self.ile_dodano += 1
             return
-        if self.sprawdzaj_czy_jednowyrazowe_słowo and\
+        if self.sprawdzaj_czy_jednoliterowe_słowo and\
           self.wejście in self.jednoliterowe_wyrazy:
             self.czy_klejone = False
 
         czy_przedrostek = False
         if self.sprawdzaj_czy_jest_przedrostkiem and\
           self.wejście in self.przedrostki:
+            # self.log.info(f"{self.wejście} jest przedrostkiem")
             czy_przedrostek = True
 
         słowo = Słowo(self.wejście,

@@ -10,61 +10,61 @@ class KonfiguracjaJęzyka:
     jednoliterowe_wyrazy  = ['a', 'i', 'o', 'u', 'w', 'z']
     # {"Fonem": ("Lewa ręka", "Prawa ręka")}
     fonemy_spółgłoskowe = {"b": ("XP", "B"),  # zm. lewe z P~
-                           "bi": ("XPJ", "BW"),  # zm. lewe z PJ~
+                           "bi": ("XPJ", "B"),  # zm. lewe z PJ~
                            "c": ("ZT", "C"),
-                           "ci": ("ZTJ", "CW"),
+                           "ci": ("ZTJ", "CG"),
                            "ch": ("X", "CB"),
-                           "chi": ("XJ", "CBW"),
+                           "chi": ("XJ", "CB"),
                            "cz": ("PV", "CL"),
-                           "czi": ("PVJ", "CLW"),
-                           "ć": ("ZTJ", "CW"),  # zm. lewe z TJ, prawe z TW
+                           "czi": ("PVJ", "CL"),
+                           "ć": ("ZTJ", "CG"),  # zm. lewe z TJ, prawe z TW
                            "d": ("FT", "BT"),  # zm. lewe z T~
-                           "di": ("FTJ", "BTW"),  # zm. lewe z TJ~
-                           "dz": ("ST", "C"),  # Dodałem
-                           "dzi": ("STJ", "CW"),  # Dodałem
-                           "dź": ("STJ", "LST"),  # zm. lewe z ZTJ~
+                           "di": ("FTJ", "BT"),  # zm. lewe z TJ~
+                           "dz": ("ST", "C"),  # Dodałem TODO
+                           "dzi": ("STJ", "CG"),  # Dodałem
+                           "dź": ("STJ", "CG"),  # zm. lewe z ZTJ~
                            "dż": ("FST", "RBTW"),  # zm. lewe z PV~, prawe z CLW
                            "f": ("F", "W"),
-                           "fi": ("FJ", "LT"),  # zm. prawe z W
+                           "fi": ("FJ", "W"),  # zm. prawe z W
                            "g": ("XK", "G"),  # zm. lewe z K~
-                           "gi": ("XKJ", "GW"),  # zm. lewe z KJ~
-                           "h": ("XF", "~CB"),  # zm. lewe z XK~, prawe z CB~
-                           "hi": ("XFJ", "~CBW"),  # zm. lewe z XKJ~, prawe z CBW
+                           "gi": ("XKJ", "G"),  # zm. lewe z KJ~
+                           "h": ("XF", "CB"),  # zm. lewe z XK~, prawe z CB~
+                           "hi": ("XFJ", "CB"),  # zm. lewe z XKJ~, prawe z CBW
                            "j": ("J", "CR"),
-                           "ji": ("J", "CRW"),
+                           "ji": ("J", "CR"),
                            "k": ("K", "ST"),  # zm. prawe z GW
-                           "ki": ("KJ", "STW"),  # zm. prawe z GW
+                           "ki": ("KJ", "ST"),  # zm. prawe z GW
                            "l": ("L", "L"),
-                           "li": ("LJ", "LW"),
+                           "li": ("LJ", "L"),
                            "ł": ("LR", "LB"),  #  zm. lewe z LJ
-                           "łi": ("LRJ", "LBW"),  #  zm. lewe z LJ
+                           "łi": ("LRJ", "LB"),  #  zm. lewe z LJ
                            "m": ("KP", "CS"),
-                           "mi": ("KPJ", "CSW"),
+                           "mi": ("KPJ", "CS"),
                            "n": ("TV", "LS"),  # zm. prawe z CL
-                           "ni": ("TVJ", "LSW"),  # zm. prawe z CLW
-                           "ń": ("TVJ", "LSW"),  # zm. prawe z CLW
+                           "ni": ("TVJ", "LSG"),  # zm. prawe z CLW
+                           "ń": ("TVJ", "LSG"),  # zm. prawe z CLW
                            # Tu zmieniłem prawą, bo nie ma "P" po prawej stronie
-                           "p": ("P", "RG"),
-                           "pi": ("PJ", "RGW"),
+                           "p": ("P", "RS"),
+                           "pi": ("PJ", "RS"),
                            "q": ("KV", "GWY"),
                            "r": ("R", "R"),
-                           "ri": ("RJ", "RW"),
+                           "ri": ("RJ", "R"),
                            "rz": ("VR", "RBW"),  # zm. lewe z RJ
                            "s": ("S", "S"),
-                           "si": ("SJ", "SW"),
+                           "si": ("SJ", "SG"),
                            "sz": ("TP", "RB"),
-                           "ś": ("SJ", "SW"),
+                           "ś": ("SJ", "SG"),
                            "t": ("T", "T"),
-                           "ti": ("TJ", "TW"),
+                           "ti": ("TJ", "T"),
                            "v": ("V", "W"),
-                           "vi": ("VJ", "LT"),  # zm. prawe z W
+                           "vi": ("VJ", "W"),  # zm. prawe z W
                            "w": ("V", "W"),
-                           "wi": ("VJ", "LT"),  # zm. prawe z ~W
+                           "wi": ("VJ", "W"),  # zm. prawe z ~W
                            "x": ("SK", "BSG"),
-                           "xi": ("SKJ", "BSGW"),
+                           "xi": ("SKJ", "BSG"),
                            "z": ("Z", "BS"),
-                           "zi": ("ZJ", "BSW"),
-                           "ź": ("ZJ", "BSW"),
+                           "zi": ("ZJ", "BSG"),
+                           "ź": ("ZJ", "BSG"),
                            "ż": ("XZ", "RBW")}  # zm. lewe z TP~
 
 
@@ -165,7 +165,7 @@ class UstawienieFabryki:
                  typ_generacji=TypyGeneracji.StandardowaGeneracja,
                  tylko_porażki_na_wejściu=False,
                  tylko_wyniki_porażek_na_wejściu=False,
-                 sprawdzaj_czy_jednowyrazowe_słowo=False,
+                 sprawdzaj_czy_jednoliterowe_słowo=False,
                  czy_klejone=False,
                  z_przedrostkiem=False,
                  sprawdzaj_czy_jest_przedrostkiem=False,
@@ -176,7 +176,7 @@ class UstawienieFabryki:
         self.typ_generacji= typ_generacji
         self.tylko_porażki_na_wejściu=tylko_porażki_na_wejściu
         self.tylko_wyniki_porażek_na_wejściu=tylko_wyniki_porażek_na_wejściu
-        self.sprawdzaj_czy_jednowyrazowe_słowo =sprawdzaj_czy_jednowyrazowe_słowo
+        self.sprawdzaj_czy_jednoliterowe_słowo =sprawdzaj_czy_jednoliterowe_słowo
         self.czy_klejone = czy_klejone
         self.z_przedrostkiem = z_przedrostkiem
         self.sprawdzaj_czy_jest_przedrostkiem = sprawdzaj_czy_jest_przedrostkiem
@@ -189,13 +189,13 @@ class KonfiguracjaFabrykiClass:
     def __init__(self):
         self.ustawienia_fabryki = dict()
         self.loguj_postęp_co = 1000
-        self.max_słów_na_akord = 7
+        self.max_słów_na_akord = 10
         self.zawsze_startuj_wszystkie_linie = True
         self.minimum_kombinacji_dodanych_per_słowo = 3
 
 KonfiguracjaFabryki = KonfiguracjaFabrykiClass()
 KonfiguracjaFabryki.ustawienia_fabryki["litery"] =\
-  [UstawienieFabryki(sprawdzaj_czy_jednowyrazowe_słowo=True,
+  [UstawienieFabryki(sprawdzaj_czy_jednoliterowe_słowo=True,
                      czy_klejone=True,
                      sprawdzaj_czy_jest_przedrostkiem=True),
    UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
@@ -444,3 +444,11 @@ KonfiguracjaFabryki.ustawienia_fabryki["rdzeń"] =\
                      limit_niedopasowania=3,
                      jest_rdzeniem=True,
                      limit_prób=5)]
+
+KonfiguracjaFabryki.ustawienia_fabryki["sylaba"] =\
+  [UstawienieFabryki(czy_klejone=True,
+                     limit_niedopasowania=5,
+                     sprawdzaj_czy_jest_przedrostkiem=True),
+   UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
+                     tylko_wyniki_porażek_na_wejściu=True,
+                     limit_niedopasowania=7)]
