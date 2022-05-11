@@ -31,8 +31,8 @@ def main():
     parser.add_argument('--max_słów_na_akord', default='7',
                         help='Ile maksymalnie słów może zawierać jeden akord')
     # parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_stara.py',
-    parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod.py',
-    # parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod_kinesis.py',
+    # parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod.py',
+    parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod_kinesis.py',
                         help='plik konfiguracji generatora')
     parser.add_argument('--slownik', default='wyniki/spektralny-slowik.json',
                         help='wynikowy plik JSON do załadowania do Plovera')
@@ -231,8 +231,8 @@ def main():
             niepowodzenia_sylab_podwójnych.append((sylaba, frekwencje[wejście]))
     # log.info(f"Niepowodzenia sylab podwójnych: {niepowodzenia_sylab_podwójnych}")
 
-    wygeneruj_max = 0
-    wygenerowano = 0
+    # wygeneruj_max = 10
+    # wygenerowano = 0
     for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
         if wejście.startswith('*'):
             continue  # TODO: do poprawy

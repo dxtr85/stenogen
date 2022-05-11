@@ -1,6 +1,7 @@
 from generator import Generator
 from jezyk import Język, Słowo
 from klawiatura import Klawiatura
+from stos import Stos
 import collections
 
 class Fabryka():
@@ -23,6 +24,7 @@ class Fabryka():
                                    konfiguracja,
                                    słownik_ostateczny) #,
                                    # sylaby)
+        self.stos = Stos(log, self.generator)
         self.typ_generacji = None
         self.numer_generacji = 0
         self.przedrostki = przedrostki
@@ -67,6 +69,8 @@ class Fabryka():
     def uruchom_linie(self, wejście, nazwa_ustawień, sylaby=None):
         self.ustaw_linie_produkcyjne(nazwa_ustawień)
         self.sylaby = sylaby
+        if not sylaby:
+            self.sylaby = self.generator.sylaby_słowa[wejście]
         self.można_przerwać = False
         # TODO: można zrobić, żeby opcjonalnie zawsze przechodzić wszystkie linie
         # self.log.info(f"uruchom_liniE {wejście}, {nazwa_ustawień} {self.typ_generacji}")
@@ -81,6 +85,8 @@ class Fabryka():
         # self.log.info(f"Fabryka wejście: {self.wejście}")
         if self.typ_generacji == self.konfiguracja.TypyGeneracji.StandardowaGeneracja:
             self.generacja_standardowa()
+        elif self.typ_generacji == self.konfiguracja.TypyGeneracji.GeneracjaZDokładaniem:
+            self.generacja_z_dokładaniem()
         elif self.typ_generacji == self.konfiguracja.TypyGeneracji.GeneracjaZnakówSpecjalnych:
             # self.log.info(f"spec: {self.wejście}")
             self.generacja_ze_znakami_specjalnymi()
@@ -116,24 +122,61 @@ class Fabryka():
 
         słowo = Słowo(self.wejście,
                       jest_przedrostkiem=czy_przedrostek,
-                      klejone=self.czy_klejone)
+                      klejone=self.czy_klejone,
+                      jest_rdzeniem=self.jest_rdzeniem)
+        # self.log.info(f"Sylaby: {self.sylaby}")
         stenosłowa = self.generator.wygeneruj(self.wejście,
                                               limit_niedopasowania=self.limit_niedopasowania,
                                               sylaby=self.sylaby,
                                               limit_prób=self.limit_prób,
                                               z_przedrostkiem=self.z_przedrostkiem)
         # self.log.info(f"std: {stenosłowa}")
-        if self.jest_rdzeniem:
-            if stenosłowa:
-                self.generator.dodaj_rdzeń(self.wejście, stenosłowa[0])
-            else:
-                self.log.error(f"Nie znalazłem kombinacji dla rdzenia '{self.wejście}'")
-            return
+        # if self.jest_rdzeniem:
+        #     if stenosłowa:
+        #         self.generator.dodaj_rdzeń(self.wejście, stenosłowa[0])
+        #     else:
+        #         self.log.error(f"Nie znalazłem kombinacji dla rdzenia '{self.wejście}'")
+        #     return
         dodane = self.generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
         udało_się = len(dodane) > 0
-        if self.jest_przedrostkiem and udało_się:
-            self.generator.przedrostki.add(self.wejście)
-                
+        if udało_się:
+            self.stos.połóż_na_stosie(self.wejście, słowo, dodane)
+            if self.jest_przedrostkiem:
+                self.generator.przedrostki.add(self.wejście)
+
+        # self.log.info(f"koniec std, {udało_się}, {słowo}, {stenosłowa}")
+        self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
+
+    def generacja_z_dokładaniem(self):
+        if not self.wejście:
+            return
+        # self.log.info(f"Z dokładaniem: {self.wejście}")
+        (self.wejście, słowo_całe, stenosłowa) = self.wejście
+        #  TODO: znaleźć najdłuższy ciąg sylab, jaki już jest dodany do słownika
+        #        i wygenerować akord dla pozostałych sylab;
+        #        połączyć je razem i spróbować dodać do słownika.
+        #        Można powtórzyć z drugim najdłuższym ciągiem sylab w przypadku
+        #        niepowodzenia.
+        #  TODO: uaktualnić słowo startowe jako przedrostek/łączone
+        dopasowania = self.stos.dopasuj_do_sylab(self.wejście)
+        łączone_stenosłowa = []
+        udało_się = False
+        stenosłowa = []
+        for (która_sylaba, słowo, stare_stenosłowa) in dopasowania:
+            stenosłowa = self.generator.wygeneruj(self.wejście,
+                                                limit_niedopasowania=self.limit_niedopasowania,
+                                                sylaby=self.sylaby[która_sylaba:],
+                                                limit_prób=self.limit_prób)
+            łączone_stenosłowa = []
+            for stare_stenosłowo in stare_stenosłowa:
+                łączone_stenosłowa += stare_stenosłowo.kombinuj(stenosłowa)
+
+            dodane = self.generator.dodaj_słowa_do_słownika(słowo_całe, łączone_stenosłowa)
+            udało_się = len(dodane) > 0
+            if udało_się:
+                słowo.ustaw_rdzeń_użyty()
+                break
+
         # self.log.info(f"koniec std, {udało_się}, {słowo}, {stenosłowa}")
         self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
 
@@ -172,7 +215,8 @@ class Fabryka():
             czy_przedrostek = True
         słowo = Słowo(self.wejście,
                       jest_przedrostkiem=czy_przedrostek,
-                      klejone=self.czy_klejone)
+                      klejone=self.czy_klejone,
+                      jest_rdzeniem=self.jest_rdzeniem)
         sylaby = self.podziel_na_sylaby()
         if len(sylaby) <= po_ile_sylab:
             return
@@ -213,6 +257,9 @@ class Fabryka():
             początki = nowe_początki
         dodane = self.generator.dodaj_słowa_do_słownika(słowo, początki)
         udało_się = len(dodane) > 0
+        if udało_się:
+            self.stos.połóż_na_stosie(self.wejście, słowo, dodane)
+
         # self.log.info(f"koniec sylabizowania, {udało_się}, {słowo}, {początki}")
         self.aktualizuj_wyjścia(udało_się, słowo, początki)
        

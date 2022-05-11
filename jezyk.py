@@ -271,9 +271,11 @@ class Język:
 
 
 class Słowo:
-    def __init__(self, litery, jest_przedrostkiem=False, klejone=False):
+    def __init__(self, litery, jest_przedrostkiem=False, klejone=False, jest_rdzeniem=False):
         self.jest_przedrostkiem=jest_przedrostkiem
         self.klejone=klejone
+        self.jest_rdzeniem=jest_rdzeniem
+        self.rdzeń_użyty=False
         self._zainicjalizuj_słowo(litery)
 
     def _zainicjalizuj_słowo(self, litery):
@@ -289,6 +291,10 @@ class Słowo:
 
     def ustaw_klejone(self, ustawienie=True):
         self.klejone=ustawienie
+
+    def ustaw_rdzeń_użyty(self, ustawienie=True):
+        if self.jest_rdzeniem:
+            self.rdzeń_użyty=ustawienie
 
     def __repr__(self):
         if self.jest_przedrostkiem:

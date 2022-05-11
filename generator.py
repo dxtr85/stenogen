@@ -39,8 +39,16 @@ class Generator():
         self.modyfikator = Akord(self.log, "~", 0)
         self.dbg = []
 
-    def dodaj_rdzeń(self, tekst, kombinacja):
-        self.rdzenie[tekst] = kombinacja
+    def usuń_rdzeń(self, rdzeń):
+        if not rdzeń.jest_rdzeniem:
+            # self.log.error(f"{rdzeń} nie jest rdzeniem")
+            return
+        if rdzeń.rdzeń_użyty:
+            log.debug(f"Nie usuwam {rdzeń.litery} bo jest używany")
+            return
+        for (kombinacja, _niedopasowanie) in self.słownik[rdzeń.litery]:
+            self.kombinacje.pop(kombinacja)
+        self.słownik.pop(rdzeń.litery)
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info(f"Inicjalizuję bazę generatora ze słownika z {len(self.słownik)} wpisów")
@@ -53,6 +61,7 @@ class Generator():
         # if słowo.litery in self.dbg:
         # self.log.debug(f"Dopasowuje dla {słowo}, {stenosłowa}")
         słowa_dodane = []
+        # self.log.info(f"ssłowa: {stenosłowa}")
         for stenosłowo in stenosłowa:
             # self.log.info(f"Teraz {stenosłowo} {type(stenosłowo)}")
             # if isinstance(akord, list):
@@ -69,6 +78,7 @@ class Generator():
 
             obecny_właściciel = None
             znaki = f"{stenosłowo}"
+            # self.log.info(f"ssłowo: {stenosłowo}")
             niedopasowanie = stenosłowo.niedopasowanie
             if słowo.litery in self.dbg:
                 self.log.debug(f"Niedo dla {stenosłowo}, {niedopasowanie}")
@@ -117,14 +127,14 @@ class Generator():
                         self.kombinacje[znaki] = słowo
                         słowa_dodane.append(stenosłowo)
         return słowa_dodane
-                
+    
     def wygeneruj(self, słowo,
-                         limit_niedopasowania,
-                         sylaby=None,
-                         limit_prób=2,
-                         bez_środka=False,
-                         z_przedrostkiem=False,
-                         z_gwiazdką=False):
+                  limit_niedopasowania,
+                  sylaby=None,
+                  limit_prób=2,
+                  bez_środka=False,
+                  z_przedrostkiem=False,
+                  z_gwiazdką=False):
         # self.postęp += 1
 
         # Dla 'w', 'z'

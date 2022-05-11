@@ -160,13 +160,14 @@ class TypyGeneracji(Enum):
     SylabizowaniePoTrzy = 4
     SylabizowaniePoDwie = 5
     SylabizowaniePojedyncze = 6
+    GeneracjaZDokładaniem = 7
 
 class UstawienieFabryki:
     def __init__(self,
                  typ_generacji=TypyGeneracji.StandardowaGeneracja,
                  tylko_porażki_na_wejściu=False,
                  tylko_wyniki_porażek_na_wejściu=False,
-                 sprawdzaj_czy_jednowyrazowe_słowo=False,
+                 sprawdzaj_czy_jednoliterowe_słowo=False,
                  czy_klejone=False,
                  z_przedrostkiem=False,
                  sprawdzaj_czy_jest_przedrostkiem=False,
@@ -177,7 +178,7 @@ class UstawienieFabryki:
         self.typ_generacji= typ_generacji
         self.tylko_porażki_na_wejściu=tylko_porażki_na_wejściu
         self.tylko_wyniki_porażek_na_wejściu=tylko_wyniki_porażek_na_wejściu
-        self.sprawdzaj_czy_jednowyrazowe_słowo =sprawdzaj_czy_jednowyrazowe_słowo
+        self.sprawdzaj_czy_jednoliterowe_słowo = sprawdzaj_czy_jednoliterowe_słowo
         self.czy_klejone = czy_klejone
         self.z_przedrostkiem = z_przedrostkiem
         self.sprawdzaj_czy_jest_przedrostkiem = sprawdzaj_czy_jest_przedrostkiem
@@ -196,7 +197,7 @@ class KonfiguracjaFabrykiClass:
 
 KonfiguracjaFabryki = KonfiguracjaFabrykiClass()
 KonfiguracjaFabryki.ustawienia_fabryki["litery"] =\
-  [UstawienieFabryki(sprawdzaj_czy_jednowyrazowe_słowo=True,
+  [UstawienieFabryki(sprawdzaj_czy_jednoliterowe_słowo=True,
                      czy_klejone=True,
                      sprawdzaj_czy_jest_przedrostkiem=True),
    UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
@@ -435,13 +436,21 @@ KonfiguracjaFabryki.ustawienia_fabryki["przedrostki"] =\
 
 KonfiguracjaFabryki.ustawienia_fabryki["rdzeń"] =\
   [UstawienieFabryki(limit_prób=15,
-                     limit_niedopasowania=8,
+                     limit_niedopasowania=4,
                      jest_rdzeniem=True),
    UstawienieFabryki(typ_generacji=TypyGeneracji.SylabizowaniePoTrzy,
-                     limit_niedopasowania=3,
+                     limit_niedopasowania=2,
                      jest_rdzeniem=True,
                      limit_prób=5),
    UstawienieFabryki(typ_generacji=TypyGeneracji.SylabizowaniePoDwie,
-                     limit_niedopasowania=3,
+                     limit_niedopasowania=2,
                      jest_rdzeniem=True,
                      limit_prób=5)]
+
+KonfiguracjaFabryki.ustawienia_fabryki["sylaba"] =\
+  [UstawienieFabryki(czy_klejone=True,
+                     limit_niedopasowania=5,
+                     sprawdzaj_czy_jest_przedrostkiem=True),
+   UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
+                     tylko_wyniki_porażek_na_wejściu=True,
+                     limit_niedopasowania=7)]
