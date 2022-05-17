@@ -178,7 +178,7 @@ class Fabryka():
                 break
 
         # self.log.info(f"koniec std, {udało_się}, {słowo}, {stenosłowa}")
-        self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
+        self.aktualizuj_wyjścia(udało_się, słowo_całe, stenosłowa)
 
     def generacja_ze_znakami_specjalnymi(self):
         # self.log.info(f"Ze znakami: {self.wejście}")

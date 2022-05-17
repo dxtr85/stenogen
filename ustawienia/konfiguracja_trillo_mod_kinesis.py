@@ -1,7 +1,7 @@
 from enum import Enum
 
 class KonfiguracjaGeneratora:
-    minimum_kombinacji_per_słowo = 2
+    minimum_kombinacji_per_słowo = 1
 
 class KonfiguracjaJęzyka:
     spółgłoski = ['b', 'c', 'ć', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ł', 'm', 'n', 'ń', 'p', 'q', 'r', 's', 'ś', 't', 'v', 'w', 'x', 'z', 'ź', 'ż']
@@ -436,14 +436,14 @@ KonfiguracjaFabryki.ustawienia_fabryki["przedrostki"] =\
 
 KonfiguracjaFabryki.ustawienia_fabryki["rdzeń"] =\
   [UstawienieFabryki(limit_prób=15,
-                     limit_niedopasowania=4,
+                     limit_niedopasowania=8,
                      jest_rdzeniem=True),
    UstawienieFabryki(typ_generacji=TypyGeneracji.SylabizowaniePoTrzy,
-                     limit_niedopasowania=2,
+                     limit_niedopasowania=3,
                      jest_rdzeniem=True,
                      limit_prób=5),
    UstawienieFabryki(typ_generacji=TypyGeneracji.SylabizowaniePoDwie,
-                     limit_niedopasowania=2,
+                     limit_niedopasowania=3,
                      jest_rdzeniem=True,
                      limit_prób=5)]
 
@@ -452,5 +452,21 @@ KonfiguracjaFabryki.ustawienia_fabryki["sylaba"] =\
                      limit_niedopasowania=5,
                      sprawdzaj_czy_jest_przedrostkiem=True),
    UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
+                     czy_klejone=True,
+                     sprawdzaj_czy_jest_przedrostkiem=True,
+                     tylko_wyniki_porażek_na_wejściu=True,
+                     limit_niedopasowania=7),
+   UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZModyfikatorami,
+                     czy_klejone=True,
+                     sprawdzaj_czy_jest_przedrostkiem=True,
+                     tylko_wyniki_porażek_na_wejściu=True)]
+
+KonfiguracjaFabryki.ustawienia_fabryki["sylaby"] =\
+  [UstawienieFabryki(czy_klejone=True,
+                     limit_niedopasowania=5,
+                     sprawdzaj_czy_jest_przedrostkiem=True),
+   UstawienieFabryki(typ_generacji=TypyGeneracji.GeneracjaZnakówSpecjalnych,
+                     czy_klejone=True,
+                     sprawdzaj_czy_jest_przedrostkiem=True,
                      tylko_wyniki_porażek_na_wejściu=True,
                      limit_niedopasowania=7)]

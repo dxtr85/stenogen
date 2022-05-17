@@ -63,19 +63,6 @@ class Generator():
         słowa_dodane = []
         # self.log.info(f"ssłowa: {stenosłowa}")
         for stenosłowo in stenosłowa:
-            # self.log.info(f"Teraz {stenosłowo} {type(stenosłowo)}")
-            # if isinstance(akord, list):
-            #     znaki = ""
-            #     dł_ciągu = len(akord)
-            #     for i in range(dł_ciągu):
-            #         znaki +=f"{akord[i]}"
-            #         if i < dł_ciągu -1:
-            #             znaki +="/"
-            #     niedopasowanie = akord[-1].niedopasowanie
-            # else:
-            #     niedopasowanie = akord.niedopasowanie
-            #     znaki = f"{akord}"
-
             obecny_właściciel = None
             znaki = f"{stenosłowo}"
             # self.log.info(f"ssłowo: {stenosłowo}")
@@ -89,15 +76,28 @@ class Generator():
                 self.kombinacje[znaki] = słowo
                 self.słownik[słowo.litery][znaki] = niedopasowanie
                 if słowo.litery in self.dbg:
-                    self.log.debug(f"Po dodaniu: {self.słownik[słowo.litery]}, {self.kombinacje[znaki]}")
+                    self.log.debug(f"dodano: {self.słownik[słowo.litery]}, {self.kombinacje[znaki]}")
 
                 słowa_dodane.append(stenosłowo)
+                if len(słowa_dodane) >= self.minimum_kombinacji_per_słowo and\
+                   (słowo.jest_rdzeniem or słowo.jest_przedrostkiem or słowo.klejone):
+                    break
             else:
                 if słowo.litery in self.dbg:
                     self.log.debug(f"{znaki} już jest w słowniku")
-                obecny_właściciel = self.kombinacje[znaki].litery
+                obecny_właściciel = self.kombinacje[znaki]
+                if obecny_właściciel.jest_przedrostkiem or\
+                   obecny_właściciel.klejone or\
+                   (obecny_właściciel.jest_rdzeniem and\
+                    obecny_właściciel.rdzeń_użyty):
+                    continue
+                
+                obecny_właściciel = obecny_właściciel.litery
                 if obecny_właściciel == słowo.litery:
                     słowa_dodane.append(stenosłowo)
+                    if len(słowa_dodane) >= self.minimum_kombinacji_per_słowo and\
+                       (słowo.jest_rdzeniem or słowo.jest_przedrostkiem or słowo.klejone):
+                        break
                     continue
                 kombinacje_właściciela = self.słownik[obecny_właściciel]
                 ilość_kombinacji_właściciela = len(kombinacje_właściciela.keys())
@@ -126,6 +126,9 @@ class Generator():
                         self.słownik[słowo.litery][znaki] = niedopasowanie
                         self.kombinacje[znaki] = słowo
                         słowa_dodane.append(stenosłowo)
+                        if len(słowa_dodane) >= self.minimum_kombinacji_per_słowo and\
+                           (słowo.jest_rdzeniem or słowo.jest_przedrostkiem or słowo.klejone):
+                            break
         return słowa_dodane
     
     def wygeneruj(self, słowo,
@@ -148,7 +151,7 @@ class Generator():
                 if len(słowo) == 1:
                     sylaby = [słowo]
                 else:
-                    sylaby = self.język.sylabizuj(słowo)
+                    sylaby = self.język.pseudo_sylabizuj(słowo)
                     # raise KeyError(f"Nie znam sylab, {e}")
         if słowo in self.dbg:
             self.log.debug(f"Szukam dla: {słowo} - {sylaby}")

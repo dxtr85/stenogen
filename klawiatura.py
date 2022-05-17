@@ -416,6 +416,8 @@ class Klawiatura:
 
     def podziel_sylaby_na_strony(self, sylaby, gdzie_podzielić=-2):
         ilość_sylab = len(sylaby)
+        if ilość_sylab == 1:
+            return self.podziel_sylabę_na_strony(sylaby[0])
         if gdzie_podzielić < 0:
             gdzie_podzielić = ilość_sylab + gdzie_podzielić
             if gdzie_podzielić < 0:
@@ -437,6 +439,42 @@ class Klawiatura:
                     sylaby[gdzie_podzielić],
                     sylaby_prawe)
 
+    def podziel_sylabę_na_strony(self, sylaba):
+         #and sylaby[0][-1] in self.język.samogłoski
+        (nagłos, śródgłos, wygłos) = self.język.fonemy_sylaby[sylaba]
+        środek = ""
+        for fonem in śródgłos:
+            środek += fonem
+        śródgłos = środek
+        if wygłos:
+            return (nagłos, śródgłos, wygłos)
+        if nagłos:
+            (lewa, prawa) = self.rozbij_nagłos_na_strony(nagłos)
+            return ([], lewa, [prawa + śródgłos])
+        return ([], śródgłos, [])
+
+    def rozbij_nagłos_na_strony(self, nagłos):
+        lewa = nagłos[0]
+        prawa = ""
+        ile_fonemów = len(nagłos)
+        if ile_fonemów == 1:
+            return (nagłos[0], "")
+        elif ile_fonemów == 2:
+            return (nagłos[0], nagłos[1])
+        elif ile_fonemów == 3:
+            return (nagłos[0] + nagłos[1],  nagłos[2])
+        elif ile_fonemów == 4:
+            return (nagłos[0] + nagłos[1],  nagłos[2] + nagłos[3])
+        else:
+            self.log.debug(f"Forfiter, qwa: {nagłos}")
+            lewa = nagłos[0]
+            for i in range(1, int(ile_fonemów/2)+1):
+                lewa += nagłos[i]
+            prawa = ""
+            for i in range(int(ile_fonemów/2)+1, ile_fonemów):
+                prawa += nagłos[i]
+            return (lewa, prawa)
+        
     def klawisze_dla_fonemu(self, fonem, prawe=False):
         fonem = fonem[0]
         if prawe:

@@ -24,15 +24,15 @@ def main():
     parser.add_argument('--słowa_z_drzewa', default='wyniki/slowa_z_drzewa.csv',
                         help='rezultaty f-cji utwórz_drzewo_binarne_z_listy_par_sylaba_frekwencja')
     # parser.add_argument('--baza', default='wyniki/spektralny-slowik_niesortowany.json',
-    parser.add_argument('--baza', default='wyniki/baza-0.json',
+    parser.add_argument('--baza', default='wyniki/baza-0abs.json',
                         help='początkowy plik słownika w formacie JSON')
     parser.add_argument('--max_niedopasowanie', default='8',
                         help='Parametr generatora, 0 - tylko słowa idealnie pasujące, więcej niż 0 - słowa z brakującymi literami w akordzie')
     parser.add_argument('--max_słów_na_akord', default='7',
                         help='Ile maksymalnie słów może zawierać jeden akord')
-    # parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_stara.py',
+    parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo.py',
     # parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod.py',
-    parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod_kinesis.py',
+    # parser.add_argument('--konfiguracja', default='ustawienia/konfiguracja_trillo_mod_kinesis.py',
                         help='plik konfiguracji generatora')
     parser.add_argument('--slownik', default='wyniki/spektralny-slowik.json',
                         help='wynikowy plik JSON do załadowania do Plovera')
@@ -174,11 +174,11 @@ def main():
             niepowodzenia.append((wejście, frekwencje[wejście]))
 
     log.info("Generuję pojedyncze sylaby")
-    pojedyncze_sylaby = set()
+    pojedyncze_sylaby = collections.OrderedDict()
     for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
         for sylaba in sylaby:
-            pojedyncze_sylaby.add(sylaba)
-    for sylaba in pojedyncze_sylaby:
+            pojedyncze_sylaby[sylaba] = None
+    for sylaba in pojedyncze_sylaby.keys():
         # for limit_niedopasowania in range(max_niedopasowanie):
         #     if limit_niedopasowania > 0:
         #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
@@ -212,18 +212,59 @@ def main():
             niepowodzenia.append((wejście, frekwencje[wejście]))
 
     log.info("Generuję niektóre podwójne sylaby")
-    podwójne_sylaby = set()
+    podwójne_sylaby = collections.OrderedDict()
     for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
         ile_sylab = len(sylaby)
         for i in range(0, ile_sylab - 1, 2):
             podwójna_sylaba = sylaby[i] + sylaby[i+1]
-            if podwójna_sylaba[-1] in konfiguracja.KonfiguracjaJęzyka.samogłoski:
-                podwójne_sylaby.add(podwójna_sylaba)
-    for sylaba in podwójne_sylaby:
+            # if podwójna_sylaba[-1] in konfiguracja.KonfiguracjaJęzyka.samogłoski:
+            podwójne_sylaby[podwójna_sylaba] = None
+    for sylaba in podwójne_sylaby.keys():
         # for limit_niedopasowania in range(max_niedopasowanie):
         #     if limit_niedopasowania > 0:
         #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
-        ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień="sylaba")
+        ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień="sylaby")
+                                           # =nazwy_ustawień[limit_niedopasowania])
+            # if ile_dodano > 0:
+            #     break
+        if ile_dodano == 0:
+            niepowodzenia_sylab_podwójnych.append((sylaba, frekwencje[wejście]))
+    # log.info(f"Niepowodzenia sylab podwójnych: {niepowodzenia_sylab_podwójnych}")
+
+    log.info("Generuję słowa trójsylabowe")
+    for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
+        if len(sylaby) != 3:
+            continue
+        if wejście.startswith('*'):
+            continue  # TODO: do poprawy
+            # wejście = wejście[1:]
+            # fabryka.uruchom_linie(wejście, nazwa_ustawień="rdzeń")
+            # ile_dodano = 1
+        elif wejście.startswith('&'):
+            wejście = wejście[1:]
+            ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="przedrostki")
+        else:
+            for limit_niedopasowania in range(max_niedopasowanie):
+                ile_dodano = fabryka.uruchom_linie(wejście,
+                                                   nazwa_ustawień=nazwy_ustawień[limit_niedopasowania])
+                if ile_dodano > 0:
+                    break
+        if ile_dodano == 0:
+            niepowodzenia.append((wejście, frekwencje[wejście]))
+
+    log.info("Generuję niektóre potrójne sylaby")
+    potrójne_sylaby = collections.OrderedDict()
+    for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
+        ile_sylab = len(sylaby)
+        for i in range(0, ile_sylab - 2, 3):
+            potrójna_sylaba = sylaby[i] + sylaby[i+1] + sylaby[i+2]
+            # if potrójna_sylaba[-1] in konfiguracja.KonfiguracjaJęzyka.samogłoski:
+            potrójne_sylaby[potrójna_sylaba] = None
+    for sylaba in potrójne_sylaby.keys():
+        # for limit_niedopasowania in range(max_niedopasowanie):
+        #     if limit_niedopasowania > 0:
+        #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
+        ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień="sylaby")
                                            # =nazwy_ustawień[limit_niedopasowania])
             # if ile_dodano > 0:
             #     break
@@ -250,10 +291,11 @@ def main():
                     break
         if ile_dodano == 0:
             niepowodzenia.append((wejście, frekwencje[wejście]))
-        # wygenerowano += 1
-        # # log.info(f"Wyg: {wygenerowano}, max: {wygeneruj_max}")
-        # if wygenerowano > wygeneruj_max:
-        #     break
+
+    #     wygenerowano += 1
+    #     # log.info(f"Wyg: {wygenerowano}, max: {wygeneruj_max}")
+    #     if wygenerowano > wygeneruj_max:
+    #         break
 
 
     # log.info(f"Wczytałem sylaby dla {ile_słów_wczytano} słów, generuję klawisze...")
@@ -296,14 +338,14 @@ def main():
     log.info(f"Dodano {len(słownik) - linie_bazy} słów w {time.time() - czas_start} sekund.")
     log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia)} słów.")
     log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_sylab)} sylab.")
-    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_sylab_podwójnych)} sylab podwójnych.")
-    log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_przedrostków)} przedrostków.")
+    # log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_sylab_podwójnych)} sylab podwójnych.")
+    # log.info(f"Nie powiodło się dodawanie kombinacji dla {len(niepowodzenia_przedrostków)} przedrostków.")
 
     log.info("Słownik utworzony, zapisuję...")
     log.info(f"Zapisuję porażki")
     pisarz.zapisz_porażki(niepowodzenia \
                           + niepowodzenia_sylab \
-                          + niepowodzenia_sylab_podwójnych \
+                          # + niepowodzenia_sylab_podwójnych \
                           + niepowodzenia_przedrostków)
     fabryka.zapisz_rezultaty(pisarz)
 
