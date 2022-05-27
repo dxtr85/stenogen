@@ -21,11 +21,12 @@ class Generator():
         self.konfiguracja = konfiguracja
         self.język = język
         self.klawiatura = klawiatura
+        self.znaki_środka = klawiatura.ręka_prawa.znaki_środka.copy()
         # {tekst: {"Kombinacja": niedopasowanie}}
         # self.język = język
         self.słownik = słownik_ostateczny
         # self.sylaby_słowa = sylaby_słowa
-        self.sylaby_słowa = SłownikDomyślny(lambda x: self.język.pseudo_sylabizuj(x))
+        self.sylaby_słowa = SłownikDomyślny(lambda x: self.język.sylabizuj(x))
         self.kombinacje = dict()
         self.przedrostki = set()
         self.rdzenie = dict()
@@ -36,8 +37,8 @@ class Generator():
         self.niepowodzenia = []
         self.analizowane_fonemy = defaultdict(lambda: 0)
         self.analizowane_końcówki = defaultdict(lambda: 0)
-        self.modyfikator = Akord(self.log, "~", 0)
-        self.dbg = []
+        self.modyfikator = Akord(self.log, "~", self.znaki_środka.copy(), 0)
+        self.dbg = []#"sześć"]
 
     def usuń_rdzeń(self, rdzeń):
         if not rdzeń.jest_rdzeniem:
@@ -154,14 +155,16 @@ class Generator():
                     sylaby = self.język.pseudo_sylabizuj(słowo)
                     # raise KeyError(f"Nie znam sylab, {e}")
         if słowo in self.dbg:
-            self.log.debug(f"Szukam dla: {słowo} - {sylaby}")
+            self.log.debug(f"Szukam dla: {słowo} - {sylaby} z przed: {z_przedrostkiem}")
         if z_przedrostkiem:
             akordy = []
             (przedrostek, sylaby, steno_przedrostki) = self.znajdź_przedrostek_dla_sylab(sylaby)
             if not przedrostek:
                 return akordy
-            # self.log.info(f"Z przedrostkiem {przedrostek}")
             podsłowo = ''.join(sylaby)
+            # self.log.info(f"Z przedrostkiem {przedrostek}, zostało: {podsłowo}")
+            if not podsłowo:
+                return akordy
             if podsłowo in self.słownik.keys():
                 # self.log.info(f"Z podsłowem {podsłowo}")
                 steno_podsłowa = self.stenosłowa_dla_liter(podsłowo)
@@ -257,7 +260,7 @@ class Generator():
             # else:
             #     niedopasowanie = akord.niedopasowanie
             if słowo.niedopasowanie < limit_niedopasowania:
-                # self.log.info(f"Dodaję po specjalne: {kombinacja}")
+                # self.log.info(f"Dodaję po specjalne: {słowo}")
                 nowe_słowo = self.klawiatura.dodaj_znaki_specjalne_do_słowa(słowo)
                 nowe_słowa += nowe_słowo
         # self.log.info(f"Zwracam: {nowe_słowa}")
@@ -348,7 +351,7 @@ class Generator():
                 stenosłowo = StenoSłowo(self.log, [])
                 # self.log.debug(f"jest slash")
                 for podkombinacja in kombinacja.split(slash):
-                    stenosłowo += Akord(self.log, podkombinacja, 0)
+                    stenosłowo += Akord(self.log, podkombinacja, self.znaki_środka.copy(), 0)
                 # podakordy[-1].niedopasowanie = niedopasowanie
                 stenosłowa.append(stenosłowo)
             else:
@@ -356,6 +359,7 @@ class Generator():
                 stenosłowa.append(StenoSłowo(self.log,
                                              [Akord(self.log,
                                                     kombinacja,
+                                                    self.znaki_środka.copy(),
                                                     niedopasowanie)]))
         # self.log.info(f"jakie zwracam: {akordy}")
         return stenosłowa

@@ -19,7 +19,7 @@ class Logger:
         self._loguj("DBG", dane)
 
     def error(self, dane):
-        self._loguj("ERR", dane)
+        self._loguj("\x1b[97;41;5mERR\x1b[m", dane)
         if self.pisz_na_ekran:
             print(f"ERR: {dane}")
 

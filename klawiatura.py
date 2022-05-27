@@ -1,4 +1,5 @@
 from pomocnicy import SłownikDomyślny, dzielniki_dla_słowa_o_długości
+from collections import OrderedDict
 tylda = "~"
 gwiazdka = "*"
 myślnik = "-"
@@ -19,7 +20,6 @@ class Klawiatura:
         self.konfiguracja = konfiguracja
         self.lewe_indeksy_klawiszy = konfiguracja.lewe_indeksy_klawiszy
         self.prawe_indeksy_klawiszy = konfiguracja.prawe_indeksy_klawiszy
-        self.znaki_środka = konfiguracja.znaki_środka
         self.dostępne_id_kombinacji = 0
         self.kombinacje = {}
         self.ręka_lewa = RękaLewa(log, konfiguracja)
@@ -265,7 +265,7 @@ class Klawiatura:
         sylaby_prawe) = self.podziel_sylaby_na_strony(sylaby,
                                                       gdzie_podzielić)
         if sylaby in self.dbg:
-            self.log.debug(f"zbuduj: {sylaby}")
+            self.log.info(f"{sylaby} podzielone {gdzie_podzielić}: {sylaby_lewe}|{sylaba_środkowa}|{sylaby_prawe}")
         # if len(sylaby_lewe) > 0 and sylaby_lewe[0][0] in self.język.samogłoski:
         #     if sylaby in self.dbg:
         #         self.log.debug(f"??? {sylaby}")
@@ -416,8 +416,8 @@ class Klawiatura:
 
     def podziel_sylaby_na_strony(self, sylaby, gdzie_podzielić=-2):
         ilość_sylab = len(sylaby)
-        if ilość_sylab == 1:
-            return self.podziel_sylabę_na_strony(sylaby[0])
+        if ilość_sylab == 1 and gdzie_podzielić < 2:
+            return self.podziel_sylabę_na_strony(sylaby[0], gdzie_podzielić)
         if gdzie_podzielić < 0:
             gdzie_podzielić = ilość_sylab + gdzie_podzielić
             if gdzie_podzielić < 0:
@@ -439,18 +439,30 @@ class Klawiatura:
                     sylaby[gdzie_podzielić],
                     sylaby_prawe)
 
-    def podziel_sylabę_na_strony(self, sylaba):
+    def podziel_sylabę_na_strony(self, sylaba, tylko_na_prawej):
+        # self.log.info(f"Dzielę {sylaba}, {tylko_na_prawej}")
          #and sylaby[0][-1] in self.język.samogłoski
         (nagłos, śródgłos, wygłos) = self.język.fonemy_sylaby[sylaba]
         środek = ""
         for fonem in śródgłos:
             środek += fonem
         śródgłos = środek
+        # self.log.info(f"{nagłos} {śródgłos} {wygłos}")
         if wygłos:
+            # self.log.info("wygłos")
             return (nagłos, śródgłos, wygłos)
+        elif tylko_na_prawej == 1:
+            # self.log.info(f"Tylko_na_prawej: {nagłos} {śródgłos}")
+            nowy_wygłos = nagłos +[śródgłos]
+            # self.log.info(f"nowy: {nowy_wygłos}")
+            return ([], "", nowy_wygłos)
         if nagłos:
-            (lewa, prawa) = self.rozbij_nagłos_na_strony(nagłos)
-            return ([], lewa, [prawa + śródgłos])
+            if tylko_na_prawej == 0:
+                (lewa, prawa) = self.rozbij_nagłos_na_strony(nagłos)
+                return ([], lewa, [prawa + śródgłos])
+            else:
+                return ([], "", nagłos.append(śródgłos))
+        # self.log.info("default")
         return ([], śródgłos, [])
 
     def rozbij_nagłos_na_strony(self, nagłos):
@@ -566,26 +578,25 @@ class Klawiatura:
 
     def dodaj_znaki_specjalne_do_słowa(self, słowo):
         # TODO: obsługa ciągów akordów
-        # self.log.debug(f"Próbuję dodać znaki dla {akord} ({akord.dodanie_tyldy[0]}, {akord.dodanie_gwiazdki[0]}, {akord.dodanie_tyldogwiazdki[0]})")
         # ciąg = False
         # if isinstance(akord, list):
         #     ciąg = akord[:-1]
         #     akord = akord[-1]
         akord = słowo.ostatni_akord()
+        # self.log.info(f"Próbuję dodać znaki dla {akord} ({akord.dodanie_tyldy[0]}, {akord.dodanie_gwiazdki[0]}, {akord.dodanie_tyldogwiazdki[0]})")
         nowe_akordy = []
         # TODO: obsługa drugich booli
         if akord.dodanie_tyldy[0]:
             nowy_akord = akord.kopia()
-            nowy_akord.jest_tylda = True
+            nowy_akord.dodaj_tyldę()
             nowe_akordy.append(nowy_akord)
         if akord.dodanie_gwiazdki[0]:
             nowy_akord = akord.kopia()
-            nowy_akord.jest_gwiazdka = True
+            nowy_akord.dodaj_gwiazdkę()
             nowe_akordy.append(nowy_akord)
         if akord.dodanie_tyldogwiazdki[0]:
             nowy_akord = akord.kopia()
-            nowy_akord.jest_tylda = True
-            nowy_akord.jest_gwiazdka = True
+            nowy_akord.dodaj_tyldogwiazdkę()
             nowe_akordy.append(nowy_akord)
 
         nowe_słowa = słowo.kombinuj_bez_ostatniego_akordu(nowe_akordy)
@@ -600,7 +611,7 @@ class Klawiatura:
         #     nowy_ciąg.append(akord)
         #     # self.log.debug(f"Dorzucam {akord} do {ciąg}): {nowy_ciąg}")
         #     nowe_ciągi.append(nowy_ciąg)
-        # self.log.debug(f"Koniec prób 2: {nowe_słowa}")
+        # self.log.info(f"Koniec prób 2: {nowe_słowa}")
         return nowe_słowa
 
     def zresetuj_klawiaturę(self):
@@ -708,6 +719,9 @@ class RękaLewa:
     def __init__(self, log, konfiguracja):
         self.log = log
         self.indeksy = konfiguracja.lewe_indeksy_klawiszy
+        self.znaki_środka = OrderedDict()
+        for znak in konfiguracja.znaki_środka:
+            self.znaki_środka[znak] = False
         self.palec_mały = Palec(log, konfiguracja.palce_lewe[0])
         self.palec_serdeczny = Palec(log, konfiguracja.palce_lewe[1])
         self.palec_środkowy = Palec(log, konfiguracja.palce_lewe[2])
@@ -848,13 +862,23 @@ class RękaLewa:
         dodanie_gwiazdki = self.palec_wskazujący.dodanie_gwiazdki_możliwe()
         dodanie_tyldogwiazdki = self.palec_wskazujący.dodanie_tyldy_i_gwiazdki_możliwe()
         # self.log.debug(f"{tekst} T{dodanie_tyldy}, G{dodanie_gwiazdki}, TG{dodanie_tyldogwiazdki}")
-        return Akord(self.log, tekst, 0, nic, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
+        return Akord(self.log,
+                     tekst,
+                     self.znaki_środka.copy(),
+                     0,
+                     nic,
+                     dodanie_tyldy,
+                     dodanie_gwiazdki,
+                     dodanie_tyldogwiazdki)
 
 
 class RękaPrawa:
     def __init__(self, log, konfiguracja, wspólne_klawisze):
         self.log = log
         self.indeksy = konfiguracja.prawe_indeksy_klawiszy
+        self.znaki_środka = OrderedDict()
+        for znak in konfiguracja.znaki_środka:
+            self.znaki_środka[znak] = False
         self.kciuk_prawy = Palec(log,
                                  konfiguracja.palce_prawe[0],
                                  ma_wspólne_klawisze=True,
@@ -991,7 +1015,14 @@ class RękaPrawa:
         dodanie_gwiazdki = self.palec_wskazujący.dodanie_gwiazdki_możliwe()
         dodanie_tyldogwiazdki = self.palec_wskazujący.dodanie_tyldy_i_gwiazdki_możliwe()
         # self.log.debug(f"{tekst} T{dodanie_tyldy}, G{dodanie_gwiazdki}, TG{dodanie_tyldogwiazdki}")
-        return Akord(self.log, nic, 0, tekst, dodanie_tyldy, dodanie_gwiazdki, dodanie_tyldogwiazdki)
+        return Akord(self.log,
+                     nic,
+                     self.znaki_środka.copy(),
+                     0,
+                     tekst,
+                     dodanie_tyldy,
+                     dodanie_gwiazdki,
+                     dodanie_tyldogwiazdki)
         
 
 class Palec:
@@ -1337,6 +1368,7 @@ class Akord:
     def __init__(self,
                  log,
                  tekst_lewy,
+                 znaki_środka,
                  niedopasowanie = 0,
                  tekst_prawy = "",
                  dodanie_tyldy = (False, False),
@@ -1344,173 +1376,229 @@ class Akord:
                  dodanie_tyldogwiazdki = (False, False)):
         self.log = log
         self.niedopasowanie = niedopasowanie
+        self.znaki_środka = znaki_środka
         self.dodanie_tyldy = dodanie_tyldy
         self.dodanie_gwiazdki = dodanie_gwiazdki
         self.dodanie_tyldogwiazdki = dodanie_tyldogwiazdki
         tekst_łączony = f"{tekst_lewy}{tekst_prawy}"
-        # self.log.debug(f"tlewy: {tekst_lewy}, tprawy: {tekst_prawy}")
-        self.jest_tylda = tylda in tekst_łączony   # TODO dla dwuczłonowych akordów z przedrostkiem
-        self.jest_gwiazdka = gwiazdka in tekst_łączony #tekst_lewy or gwiazdka in tekst_prawy  # TODO j.w.
-        self.jest_jot = jot in tekst_łączony #tekst_lewy or jot in tekst_prawy
-        self.jest_ee = ee in tekst_łączony #tekst_lewy or ee in tekst_prawy
-        self.jest_ii = ii in tekst_łączony #tekst_lewy or ii in tekst_prawy
-        self.jest_aa = aa in tekst_łączony #tekst_lewy or aa in tekst_prawy
-        self.jest_uu = uu in tekst_łączony #tekst_lewy or uu in tekst_prawy
+        # self.log.info(f"tlewy: {tekst_lewy}, tprawy: {tekst_prawy}, zś: {znaki_środka}")
+        # self.jest_tylda = tylda in tekst_łączony   # TODO dla dwuczłonowych akordów z przedrostkiem
+        # self.jest_gwiazdka = gwiazdka in tekst_łączony #tekst_lewy or gwiazdka in tekst_prawy  # TODO j.w.
+        # self.jest_jot = jot in tekst_łączony #tekst_lewy or jot in tekst_prawy
+        # self.jest_ee = ee in tekst_łączony #tekst_lewy or ee in tekst_prawy
+        # self.jest_ii = ii in tekst_łączony #tekst_lewy or ii in tekst_prawy
+        # self.jest_aa = aa in tekst_łączony #tekst_lewy or aa in tekst_prawy
+        # self.jest_uu = uu in tekst_łączony #tekst_lewy or uu in tekst_prawy
+        # self.log.info(f"zś: {self.znaki_środka.items()}")
+        for znak in self.znaki_środka.keys():
+            if znak in tekst_łączony:
+                self.znaki_środka[znak] = True
         if tekst_prawy == "":
-            (tekst_lewy, tekst_prawy) = self.tekst_na_pół(f"{tekst_lewy}")
+            (tekst_lewy, tekst_prawy) = self.tekst_na_pół(tekst_łączony)
             # self.log.debug(f"Podzielony: {tekst_lewy} {tekst_prawy}")
-        if self.jest_tylda:
-            tekst_lewy = tekst_lewy.replace(tylda, nic)
-            tekst_prawy = tekst_prawy.replace(tylda, nic)
-        if self.jest_gwiazdka:
-            tekst_lewy = tekst_lewy.replace(gwiazdka, nic)
-            tekst_prawy = tekst_prawy.replace(gwiazdka, nic)
-        if self.jest_jot:
-            tekst_lewy = tekst_lewy.replace(jot, nic)
-            tekst_prawy = tekst_prawy.replace(jot, nic)
-        if self.jest_ee:
-            tekst_lewy = tekst_lewy.replace(ee, nic)
-            tekst_prawy = tekst_prawy.replace(ee, nic)
-        if self.jest_ii:
-            tekst_lewy = tekst_lewy.replace(ii, nic)
-            tekst_prawy = tekst_prawy.replace(ii, nic)
-        if self.jest_aa:
-            tekst_lewy = tekst_lewy.replace(aa, nic)
-            tekst_prawy = tekst_prawy.replace(aa, nic)
-        if self.jest_uu:
-            tekst_lewy = tekst_lewy.replace(uu, nic)
-            tekst_prawy = tekst_prawy.replace(uu, nic)
+        for znak in self.znaki_środka.keys():
+            if self.znaki_środka[znak]:
+                tekst_lewy = tekst_lewy.replace(znak, nic)
+                tekst_prawy = tekst_prawy.replace(znak, nic)
+        # if self.jest_tylda:
+        # if self.jest_gwiazdka:
+        #     tekst_lewy = tekst_lewy.replace(gwiazdka, nic)
+        #     tekst_prawy = tekst_prawy.replace(gwiazdka, nic)
+        # if self.jest_jot:
+        #     tekst_lewy = tekst_lewy.replace(jot, nic)
+        #     tekst_prawy = tekst_prawy.replace(jot, nic)
+        # if self.jest_ee:
+        #     tekst_lewy = tekst_lewy.replace(ee, nic)
+        #     tekst_prawy = tekst_prawy.replace(ee, nic)
+        # if self.jest_ii:
+        #     tekst_lewy = tekst_lewy.replace(ii, nic)
+        #     tekst_prawy = tekst_prawy.replace(ii, nic)
+        # if self.jest_aa:
+        #     tekst_lewy = tekst_lewy.replace(aa, nic)
+        #     tekst_prawy = tekst_prawy.replace(aa, nic)
+        # if self.jest_uu:
+        #     tekst_lewy = tekst_lewy.replace(uu, nic)
+        #     tekst_prawy = tekst_prawy.replace(uu, nic)
 
         self.tekst_lewy = tekst_lewy
         self.tekst_prawy = tekst_prawy
         # self.log.debug(f"Akord: {self}")
 
-    # def __truediv__(self, akord):
-    #     return Akord(f"{self}{slash}{akord}",
-    #                  self.waga + akord.waga,
-    #                  tekst_prawy=nic,
-    #                  akord.dodanie_tyldy,
-    #                  akord.dodanie_gwiazdki,
-    #                  akord.dodanie_tyldogwiazdki)
-
     def kopia(self):
         kopia = Akord(self.log,
                       self.tekst_lewy,
+                      self.znaki_środka.copy(),
                       self.niedopasowanie,
                       self.tekst_prawy,
                       self.dodanie_tyldy,
                       self.dodanie_gwiazdki,
                       self.dodanie_tyldogwiazdki)
-        kopia.jest_tylda = self.jest_tylda
-        kopia.jest_gwiazdka = self.jest_gwiazdka
-        kopia.jest_jot = self.jest_jot
-        kopia.jest_ee = self.jest_ee
-        kopia.jest_ii = self.jest_ii
-        kopia.jest_aa = self.jest_aa
-        kopia.jest_uu = self.jest_uu
+        # kopia.jest_tylda = self.jest_tylda
+        # kopia.jest_gwiazdka = self.jest_gwiazdka
+        # kopia.jest_jot = self.jest_jot
+        # kopia.jest_ee = self.jest_ee
+        # kopia.jest_ii = self.jest_ii
+        # kopia.jest_aa = self.jest_aa
+        # kopia.jest_uu = self.jest_uu
         return kopia
+
+    def dodaj_tyldę(self):
+        if self.dodanie_tyldy[0]:
+            self.znaki_środka[tylda] = True
+            self.dodanie_tyldy = (False, False)
+            self.dodanie_tyldogwiazdki = (False, False)
+
+    def dodaj_gwiazdkę(self):
+        if self.dodanie_gwiazdki[0]:
+            self.znaki_środka[gwiazdka] = True
+            self.dodanie_gwiazdki = (False, False)
+            self.dodanie_tyldogwiazdki = (False, False)
+
+    def dodaj_tyldogwiazdkę(self):
+        if self.dodanie_tyldogwiazdki[0]:
+            self.znaki_środka[tylda] = True
+            self.znaki_środka[gwiazdka] = True
+            self.dodanie_tyldy = (False, False)
+            self.dodanie_gwiazdki = (False, False)
+            self.dodanie_tyldogwiazdki = (False, False)
+
+    def __eq__(self, inny):
+        if not self.tekst_lewy == inny.tekst_lewy:
+            return False
+        elif not self.znaki_środka == inny.znaki_środka:
+            return False
+        elif not self.niedopasowanie == inny.niedopasowanie:
+            return False
+        elif not self.tekst_prawy == inny.tekst_prawy:
+            return False
+        elif not self.dodanie_tyldy == inny.dodanie_tyldy:
+            return False
+        elif not self.dodanie_gwiazdki == inny.dodanie_gwiazdki:
+            return False
+        elif not self.dodanie_tyldogwiazdki == inny.dodanie_tyldogwiazdki:
+            return False
+        return True
 
     def __add__(self, akord):
         # self.log.info(f"Dodaję {self} + {akord}")
         if slash in f"{self}{akord}":
             self.log.error(f"Nie mogę połączyć multiakordu ({self} {akord})")
-            return Akord(self.log, "", 999)
-        jest_jot = self.jest_jot
-        if akord.jest_jot:
-            jest_jot = True
-        jest_ee = self.jest_ee
-        if akord.jest_ee:
-            jest_ee = True
-            
-        jest_tylda = self.jest_tylda
-        if akord.jest_tylda:
-            jest_tylda = True
+            return Akord(self.log, "", self.znaki_środka.copy(), 999)
+        nowe_znaki = self.znaki_środka.copy()
+        for znak in self.znaki_środka.keys():
+            nowe_znaki[znak] = self.znaki_środka[znak] or akord.znaki_środka[znak]
+        # jest_jot = self.jest_jot
+        # if akord.jest_jot:
+        #     jest_jot = True
+        # jest_ee = self.jest_ee
+        # if akord.jest_ee:
+        #     jest_ee = True
+        # jest_tylda = self.jest_tylda
+        # if akord.jest_tylda:
+        #     jest_tylda = True
         dodanie_tyldy = (False, False)
-        if not jest_tylda:
+        if not nowe_znaki[tylda]:
             if self.dodanie_tyldy[0]:
                 dodanie_tyldy = self.dodanie_tyldy
             elif akord.dodanie_tyldy[0]:
                 dodanie_tyldy = akord.dodanie_tyldy
 
-        jest_gwiazdka = self.jest_gwiazdka
-        if akord.jest_gwiazdka:
-            jest_gwiazdka = True
+        # jest_gwiazdka = self.jest_gwiazdka
+        # if akord.jest_gwiazdka:
+        #     jest_gwiazdka = True
         dodanie_gwiazdki = (False, False)
-        if not jest_gwiazdka:
+        if not nowe_znaki[gwiazdka]:
             if self.dodanie_gwiazdki[0]:
                 dodanie_gwiazdki = self.dodanie_gwiazdki
             elif akord.dodanie_gwiazdki[0]:
                 dodanie_gwiazdki = akord.dodanie_gwiazdki
 
         dodanie_tyldogwiazdki = (False, False)
-        if not jest_gwiazdka and not jest_tylda:
+        if not nowe_znaki[gwiazdka] and not nowe_znaki[tylda]:
             if self.dodanie_tyldogwiazdki[0]:
                 dodanie_tyldogwiazdki = self.dodanie_tyldogwiazdki
             elif akord.dodanie_tyldogwiazdki[0]:
                 dodanie_tyldogwiazdki = akord.dodanie_tyldogwiazdki
 
-        jest_ii = self.jest_ii
-        if akord.jest_ii:
-            jest_ii = True
-        jest_aa = self.jest_aa
-        if akord.jest_aa:
-            jest_aa = True
-        jest_uu = self.jest_uu
-        if akord.jest_uu:
-            jest_uu = True
+        # jest_ii = self.jest_ii
+        # if akord.jest_ii:
+        #     jest_ii = True
+        # jest_aa = self.jest_aa
+        # if akord.jest_aa:
+        #     jest_aa = True
+        # jest_uu = self.jest_uu
+        # if akord.jest_uu:
+        #     jest_uu = True
         # self.log.info(f"nowy lewy: {self.tekst_lewy}+{akord.tekst_lewy}")
-        tekst_lewy = self.l_tekst() + akord.l_tekst()
+        # tekst_lewy = self.l_tekst() + akord.l_tekst()
+        tekst_lewy = self.tekst_lewy + akord.tekst_lewy
         # self.log.info(f"nowy prawy: {self.tekst_prawy}+{akord.tekst_prawy}")
-        tekst_prawy = self.p_tekst() + akord.p_tekst()
+        tekst_prawy = self.tekst_prawy + akord.tekst_prawy
         wyjściowy = Akord(self.log,
                           tekst_lewy,
+                          nowe_znaki,
                           self.niedopasowanie + akord.niedopasowanie,
                           tekst_prawy,
                           dodanie_tyldy,
                           dodanie_gwiazdki,
                           dodanie_tyldogwiazdki)
-        wyjściowy.jest_jot = jest_jot
-        wyjściowy.jest_ee = jest_ee
-        wyjściowy.jest_tylda = jest_tylda
-        wyjściowy.jest_gwiazdka = jest_gwiazdka
-        wyjściowy.jest_ii = jest_ii
-        wyjściowy.jest_aa = jest_aa
-        wyjściowy.jest_uu = jest_uu
+        # wyjściowy.jest_jot = jest_jot
+        # wyjściowy.jest_ee = jest_ee
+        # wyjściowy.jest_tylda = jest_tylda
+        # wyjściowy.jest_gwiazdka = jest_gwiazdka
+        # wyjściowy.jest_ii = jest_ii
+        # wyjściowy.jest_aa = jest_aa
+        # wyjściowy.jest_uu = jest_uu
         return wyjściowy
 
     def tekst_na_pół(self, tekst):
-        # self.log.info(f"DZielę na pół: {tekst}")
-        if self.jest_tylda:
-            return (tekst.split(tylda))
-        elif self.jest_gwiazdka:
-            return (tekst.split(gwiazdka))
-        elif self.jest_jot:
-            return (tekst.split(jot))
-        elif self.jest_ee:
-            return (tekst.split(ee))
-        elif self.jest_ii:
-            return (tekst.split(ii))
-        elif self.jest_aa:
-            return (tekst.split(aa))
-        elif self.jest_uu:
-            return (tekst.split(uu))
+        # self.log.info(f"DZielę na pół: '{tekst}'")
+        if not len(tekst):
+            return ("", "")
+        for znak in self.znaki_środka.keys():
+            if self.znaki_środka[znak] and znak in tekst:
+                # self.log.info(f"ocho: {znak} na pół: {tekst.split(znak)}")
+                return tekst.split(znak)
+        # if self.jest_tylda:
+        # elif self.jest_gwiazdka:
+        #     return (tekst.split(gwiazdka))
+        # elif self.jest_jot:
+        #     return (tekst.split(jot))
+        # elif self.jest_ee:
+        #     return (tekst.split(ee))
+        # elif self.jest_ii:
+        #     return (tekst.split(ii))
+        # elif self.jest_aa:
+        #     return (tekst.split(aa))
+        # elif self.jest_uu:
+        #     return (tekst.split(uu))
         return (tekst, "")
         
-    def l_tekst(self):
-        return f"{self.tekst_lewy}{jot if self.jest_jot else nic}{ee if self.jest_ee else nic}{tylda if self.jest_tylda else nic}{gwiazdka if self.jest_gwiazdka else nic}"
+    # def l_tekst(self):
+    #     return f"{self.tekst_lewy}{jot if self.jest_jot else nic}{ee if self.jest_ee else nic}{tylda if self.jest_tylda else nic}{gwiazdka if self.jest_gwiazdka else nic}"
 
-    def p_tekst(self):
-        return f"{ii if self.jest_ii else nic}{aa if self.jest_aa else nic}{uu if self.jest_uu else nic}{self.tekst_prawy}"
+    # def p_tekst(self):
+    #     return f"{uu if self.jest_uu else nic}{aa if self.jest_aa else nic}{ii if self.jest_ii else nic}{self.tekst_prawy}"
 
     def __repr__(self):
-        myślnik_wymagany = True
-        if self.jest_tylda or self.jest_gwiazdka or self.jest_jot or self.jest_ee or self.jest_ii or self.jest_aa or self.jest_uu:
+        myślnik_wymagany = not any(self.znaki_środka.values())
+        # if self.jest_tylda or self.jest_gwiazdka or self.jest_jot or self.jest_ee or self.jest_ii or self.jest_aa or self.jest_uu:
+        #     myślnik_wymagany = False
+        # l_tekst = self.l_tekst()
+        # p_tekst = self.p_tekst()
+        if myślnik in self.tekst_lewy or myślnik in self.tekst_prawy:
             myślnik_wymagany = False
-        l_tekst = self.l_tekst()
-        p_tekst = self.p_tekst()
-        if myślnik in l_tekst or myślnik in p_tekst:
-            myślnik_wymagany = False            
-        return f"{l_tekst}{myślnik if myślnik_wymagany else nic}{p_tekst}"
+        if myślnik_wymagany:
+            return f"{self.tekst_lewy}{myślnik}{self.tekst_prawy}"
+        else:
+            środek = ""
+            # self.log.debug(f"zś: {self.znaki_środka.items()}")
+            for znak, czy_jest in self.znaki_środka.items():
+                if czy_jest:
+                    # self.log.debug(f"Dodaję do środka: {znak}")
+                    środek = środek + znak
+            # self.log.debug(f"śr: {środek}")
+            return f"{self.tekst_lewy}{środek}{self.tekst_prawy}"
 
 
 class StenoSłowo:

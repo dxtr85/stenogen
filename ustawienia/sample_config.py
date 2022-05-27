@@ -3,57 +3,70 @@ from ustawienia.konfiguracja_fabryki import KonfiguracjaFabryki
 from ustawienia.konfiguracja_fabryki import TypyGeneracji
 
 
+# Required: language config
 class KonfiguracjaJęzyka:
+    # Optional helper for class attribute definitions
+    nic = ""
+
+    # Required: characted used for palatalization,
+    # set to None in order to disable palatalization
+    zmiękczenie = "i"
+
+    # Required: consonants
     spółgłoski = ['b', 'c', 'ć', 'd', 'f', 'g', 'h', 'j', 'k', 'l', 'ł', 'm',
                   'n', 'ń', 'p', 'q', 'r', 's', 'ś', 't', 'v', 'w', 'x', 'z',
                   'ź', 'ż']
-    nic = ""
-    zmiękczenie = "i"
+
+    # Required: vowels
     samogłoski = ['a', 'ą', 'e', 'ę', 'i', 'o', 'ó', 'u', 'y']
+
+    # Required: one letter words
     jednoliterowe_wyrazy  = ['a', 'i', 'o', 'u', 'w', 'z']
-    # {"Fonem": ("Lewa ręka", "Prawa ręka")}
-    fonemy_spółgłoskowe = {"b": ("XP", "B"),  # zm. lewe z P~
-                           "bi": ("XPJ", "BI"),  # zm. lewe z PJ~
+
+    # Required: consonant phonemes
+    # {"Phoneme as part of written word": ("Left hand combo", "Right hand combo")}
+    # Hint: have same-sounding phonems share the same combos
+    fonemy_spółgłoskowe = {"b": ("XP", "B"),
+                           "bi": ("XPJ", "BI"),
                            "c": ("ZT", "C"),
                            "ci": ("ZTJ", "CI"),
                            "ch": ("X", "CB"),
                            "chi": ("XJ", "CBI"),
                            "cz": ("PV", "CL"),
                            "czi": ("PVJ", "CLI"),
-                           "ć": ("ZTJ", "CI"),  # zm. lewe z TJ, prawe z TW
-                           "d": ("FT", "SG"),  # zm. lewe z T~
-                           "di": ("FTJ", "ISG"),  # zm. lewe z TJ~
-                           "dz": ("ST", "LG"),  # Dodałem
-                           "dzi": ("STJ", "LIG"),  # Dodałem
-                           "dź": ("STJ", "LIG"),  # zm. lewe z ZTJ~
-                           "dż": ("FST", "BG"),  # zm. lewe z PV~, prawe z CLW
-                           "dżi": ("FSTJ", "BIG"),  # zm. lewe z PV~, prawe z CLW
+                           "ć": ("ZTJ", "CI"),
+                           "d": ("FT", "SG"),
+                           "di": ("FTJ", "ISG"),
+                           "dz": ("ST", "LG"),
+                           "dzi": ("STJ", "LIG"),
+                           "dź": ("STJ", "LIG"),
+                           "dż": ("FST", "BG"),
+                           "dżi": ("FSTJ", "BIG"),
                            "f": ("F", "CG"),
-                           "fi": ("FJ", "CIG"),  # zm. prawe z W
-                           "g": ("XK", "G"),  # zm. lewe z K~
-                           "gi": ("XKJ", "IG"),  # zm. lewe z KJ~
-                           "h": ("X", "CB"),  # zm. lewe z XK~, prawe z CB~
-                           "hi": ("XJ", "CBI"),  # zm. lewe z XKJ~, prawe z CBW
+                           "fi": ("FJ", "CIG"),
+                           "g": ("XK", "G"),
+                           "gi": ("XKJ", "IG"),
+                           "h": ("X", "CB"),
+                           "hi": ("XJ", "CBI"),
                            "j": ("J", "CR"),
                            "ji": ("J", "CRI"),
-                           "k": ("K", "RL"),  # zm. prawe z GW
-                           "ki": ("KJ", "RLI"),  # zm. prawe z GW
+                           "k": ("K", "RL"),
+                           "ki": ("KJ", "RLI"),
                            "l": ("L", "L"),
                            "li": ("LJ", "LI"),
-                           "ł": ("LR", "LB"),  #  zm. lewe z LJ
-                           "łi": ("LRJ", "LBI"),  #  zm. lewe z LJ
+                           "ł": ("LR", "LB"),
+                           "łi": ("LRJ", "LBI"),
                            "m": ("KP", "CS"),
                            "mi": ("KPJ", "CIS"),
-                           "n": ("TV", "LS"),  # zm. prawe z CL
-                           "ni": ("TVJ", "LIS"),  # zm. prawe z CLW
-                           "ń": ("TVJ", "LIS"),  # zm. prawe z CLW
-                           # Tu zmieniłem prawą, bo nie ma "P" po prawej stronie
+                           "n": ("TV", "LS"),
+                           "ni": ("TVJ", "LIS"),
+                           "ń": ("TVJ", "LIS"),
                            "p": ("P", "RG"),
                            "pi": ("PJ", "RIG"),
                            "q": ("KV", "~LB"),
                            "r": ("R", "R"),
                            "ri": ("RJ", "RI"),
-                           "rz": ("XZ", "RS"),  # zm. lewe z RJ
+                           "rz": ("XZ", "RS"),
                            "s": ("S", "S"),
                            "si": ("SJ", "IS"),
                            "sz": ("TP", "RB"),
@@ -61,17 +74,18 @@ class KonfiguracjaJęzyka:
                            "t": ("T", "T"),
                            "ti": ("TJ", "IT"),
                            "v": ("V~", "W~"),
-                           "vi": ("VJ~", "IW~"),  # zm. prawe z W
+                           "vi": ("VJ~", "IW~"),
                            "w": ("V", "W"),
-                           "wi": ("VJ", "IW"),  # zm. prawe z ~W
+                           "wi": ("VJ", "IW"),
                            "x": ("XF", "~SG"),
                            "xi": ("XFJ", "~ISG"),
                            "z": ("Z", "BS"),
                            "zi": ("ZJ", "BIS"),
                            "ź": ("ZJ", "BIS"),
-                           "ż": ("XZ", "RS")}  # zm. lewe z TP~
+                           "ż": ("XZ", "RS")}
 
-    # {"Fonem": ("Środek", "Prawa ręka")}
+    # Required: vowel phonemes
+    # {"Phoneme": ("Center combo", "Right hand combo")}
     fonemy_samogłoskowe = {"a": ("A", "TO"),
                            "ą": ("UA", "TW"),
                            "e": ("E", "TWOY"),
@@ -79,10 +93,10 @@ class KonfiguracjaJęzyka:
                            "i": ("J", "I"),
                            "o": ("AI", "O"),
                            "ó": ("U", "~O"),
-                           # Tutaj zabrałem prawą rękę z "i"
                            "u": ("U", "WY"),
                            "y": ("EUA", "Y")}
 
+    # Required: two-char phonemes
     fonemy_dwuznakowe = {"b": ["i"],
                              "c": ["h", "i", "z"],
                              "d": ["i", "z", "ź", "ż"],
@@ -102,23 +116,12 @@ class KonfiguracjaJęzyka:
                              "w": ["i"],
                              "z": ["i"]}
 
-    fonemy_niesamodzielne = ["ps", "st", "br"]
-    for fonem in fonemy_spółgłoskowe.keys():
-        if fonem == "ł":
-            continue
-        fonemy_niesamodzielne.append(fonem + "ł")
-    for fonem in fonemy_spółgłoskowe.keys():
-        if fonem == "ż":
-            continue
-        fonemy_niesamodzielne.append(fonem + "ż")
-    for fonem in fonemy_spółgłoskowe.keys():
-        if fonem == "rz":
-            continue
-        fonemy_niesamodzielne.append(fonem + "rz")
-
-
+# Required: Keyboard configuration, keys in steno order
 class KonfiguracjaKlawiatury:
+    # Required: character ordering
     kolejność = '#/XFZSKTPVLRJE-~*UAICRLBSGTWOY'
+
+    # Optional helpers for attribute definitions
     tylda = "~"
     gwiazdka = "*"
     myślnik = "-"
@@ -128,21 +131,25 @@ class KonfiguracjaKlawiatury:
     aa = "A"
     uu = "U"
 
+    # Required: left fingers from left to right
     palce_lewe = [("X", "F", "Z", "S"),
                   ("K", "T"),
                   ("P", "V"),
                   ("L", "R", tylda, gwiazdka),
                   (jot, ee, uu, aa)]
 
+    # Required: center keys on the keyboard (thumbs and shared index fingers keys)
     znaki_środka = [jot, ee, tylda, gwiazdka, uu, aa, ii]
 
+    # Required: right fingers from left to right
     palce_prawe = [(uu, aa, ii),
                   (tylda, gwiazdka, "C", "R"),
                   ("L", "B"),
                   ("S", "G"),
                   ("T", "W", "O", "Y")]
 
-    # indeksy kolumn po lewej stronie od 0
+    # Required: left side steno column indices starting from 0
+    # include allowed one finger combos
     lewe_indeksy_klawiszy = {"X": 0, "F": 0, "XF": 0, "XZ": 0, "FS": 0, "XFZS": 0,
                              "Z": 1, "S": 1, "ZS": 1,
                              "K": 2, "T": 2, "KT": 2,
@@ -151,7 +158,8 @@ class KonfiguracjaKlawiatury:
                              tylda: 5, gwiazdka: 5, uu: 5,
                              aa: 6}
 
-    # indeksy kolumn po prawej stronie od 0
+    # Required: right side steno column indices
+    # include allowed one finger combos 
     prawe_indeksy_klawiszy = {tylda: 5, gwiazdka: 5, uu: 5,
                               "C": 6, "R": 6, "CR": 6, aa: 6,
                               "L": 7, "B": 7, "LB": 7, ii: 7,

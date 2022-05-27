@@ -9,66 +9,66 @@ class KonfiguracjaJęzyka:
     jednoliterowe_wyrazy  = ['a', 'i', 'o', 'u', 'w', 'z']
     # {"Fonem": ("Lewa ręka", "Prawa ręka")}
     fonemy_spółgłoskowe = {"b": ("XP", "B"),  # zm. lewe z P~
-                           "bi": ("XPJ", "B"),  # zm. lewe z PJ~
+                           "bi": ("XPJ", "BW"),  # zm. lewe z PJ~
                            "c": ("ZT", "C"),
-                           "ci": ("ZTJ", "CG"),
+                           "ci": ("ZTJ", "CW"),
                            "ch": ("X", "CB"),
-                           "chi": ("XJ", "CB"),
+                           "chi": ("XJ", "CBW"),
                            "cz": ("PV", "CL"),
-                           "czi": ("PVJ", "CL"),
-                           "ć": ("ZTJ", "CG"),  # zm. lewe z TJ, prawe z TW
+                           "czi": ("PVJ", "CLW"),
+                           "ć": ("ZTJ", "CW"),  # zm. lewe z TJ, prawe z TW
                            "d": ("FT", "BT"),  # zm. lewe z T~
-                           "di": ("FTJ", "BT"),  # zm. lewe z TJ~
-                           "dz": ("ST", "C"),  # Dodałem TODO
-                           "dzi": ("STJ", "CG"),  # Dodałem
-                           "dź": ("STJ", "CG"),  # zm. lewe z ZTJ~
+                           "di": ("FTJ", "BTW"),  # zm. lewe z TJ~
+                           "dz": ("ST", "C"),  # Dodałem
+                           "dzi": ("STJ", "CW"),  # Dodałem
+                           "dź": ("STJ", "LST"),  # zm. lewe z ZTJ~
                            "dż": ("FST", "RBTW"),  # zm. lewe z PV~, prawe z CLW
                            "f": ("F", "W"),
-                           "fi": ("FJ", "W"),  # zm. prawe z W
+                           "fi": ("FJ", "LT"),  # zm. prawe z W
                            "g": ("XK", "G"),  # zm. lewe z K~
-                           "gi": ("XKJ", "G"),  # zm. lewe z KJ~
-                           "h": ("XF", "CB"),  # zm. lewe z XK~, prawe z CB~
-                           "hi": ("XFJ", "CB"),  # zm. lewe z XKJ~, prawe z CBW
+                           "gi": ("XKJ", "GW"),  # zm. lewe z KJ~
+                           "h": ("XF", "~CB"),  # zm. lewe z XK~, prawe z CB~
+                           "hi": ("XFJ", "~CBW"),  # zm. lewe z XKJ~, prawe z CBW
                            "j": ("J", "CR"),
-                           "ji": ("J", "CR"),
+                           "ji": ("J", "CRW"),
                            "k": ("K", "ST"),  # zm. prawe z GW
-                           "ki": ("KJ", "ST"),  # zm. prawe z GW
+                           "ki": ("KJ", "STW"),  # zm. prawe z GW
                            "l": ("L", "L"),
-                           "li": ("LJ", "L"),
+                           "li": ("LJ", "LW"),
                            "ł": ("LR", "LB"),  #  zm. lewe z LJ
-                           "łi": ("LRJ", "LB"),  #  zm. lewe z LJ
+                           "łi": ("LRJ", "LBW"),  #  zm. lewe z LJ
                            "m": ("KP", "CS"),
-                           "mi": ("KPJ", "CS"),
+                           "mi": ("KPJ", "CSW"),
                            "n": ("TV", "LS"),  # zm. prawe z CL
-                           "ni": ("TVJ", "LSG"),  # zm. prawe z CLW
-                           "ń": ("TVJ", "LSG"),  # zm. prawe z CLW
+                           "ni": ("TVJ", "LSW"),  # zm. prawe z CLW
+                           "ń": ("TVJ", "LSW"),  # zm. prawe z CLW
                            # Tu zmieniłem prawą, bo nie ma "P" po prawej stronie
-                           "p": ("P", "RS"),
-                           "pi": ("PJ", "RS"),
+                           "p": ("P", "RG"),
+                           "pi": ("PJ", "RGW"),
                            "q": ("KV", "GWY"),
                            "r": ("R", "R"),
-                           "ri": ("RJ", "R"),
+                           "ri": ("RJ", "RW"),
                            "rz": ("VR", "RBW"),  # zm. lewe z RJ
                            "s": ("S", "S"),
-                           "si": ("SJ", "SG"),
+                           "si": ("SJ", "SW"),
                            "sz": ("TP", "RB"),
-                           "ś": ("SJ", "SG"),
+                           "ś": ("SJ", "SW"),
                            "t": ("T", "T"),
-                           "ti": ("TJ", "T"),
+                           "ti": ("TJ", "TW"),
                            "v": ("V", "W"),
-                           "vi": ("VJ", "W"),  # zm. prawe z W
+                           "vi": ("VJ", "LT"),  # zm. prawe z W
                            "w": ("V", "W"),
-                           "wi": ("VJ", "W"),  # zm. prawe z ~W
+                           "wi": ("VJ", "LT"),  # zm. prawe z ~W
                            "x": ("SK", "BSG"),
-                           "xi": ("SKJ", "BSG"),
+                           "xi": ("SKJ", "BSGW"),
                            "z": ("Z", "BS"),
-                           "zi": ("ZJ", "BSG"),
-                           "ź": ("ZJ", "BSG"),
+                           "zi": ("ZJ", "BSW"),
+                           "ź": ("ZJ", "BSW"),
                            "ż": ("XZ", "RBW")}  # zm. lewe z TP~
 
     # {"Fonem": ("Środek", "Prawa ręka")}
     fonemy_samogłoskowe = {"a": ("A", "TO"),
-                           "ą": ("~O", "TW"),
+                           "ą": ("~A", "TW"),
                            "e": ("E", "TWOY"),
                            "ę": ("E~", "OY"),
                            "i": ("I", nic),
@@ -99,7 +99,7 @@ class KonfiguracjaJęzyka:
 
 
 class KonfiguracjaKlawiatury:
-    kolejność = '/XFZSKTPVLRJE-~*IAUCRLBSGTWOY'
+    kolejność = '#/XFZSKTPVLRJE-~*IAUCRLBSGTWOY'
     tylda = "~"
     gwiazdka = "*"
     myślnik = "-"

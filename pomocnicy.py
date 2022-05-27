@@ -169,7 +169,7 @@ def dzielniki_dla_słowa_o_długości(n):
     if n == 0:
         return []
     elif n == 1:
-        return [0]
+        return [0, 1, 2]  # 1 i 2 używane jako przełącznik do rozciągania sylab na całą klawiaturę
     elif n == 2:
         return [0, 1]
     elif n == 3:

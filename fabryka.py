@@ -68,9 +68,17 @@ class Fabryka():
 
     def uruchom_linie(self, wejście, nazwa_ustawień, sylaby=None):
         self.ustaw_linie_produkcyjne(nazwa_ustawień)
-        self.sylaby = sylaby
+
+        #  Poniższe jest zamotane dlatego, że chcę mieć tego loga do ulepszenia sylabizacji
+        gen_sylaby = self.generator.sylaby_słowa[wejście]
         if not sylaby:
-            self.sylaby = self.generator.sylaby_słowa[wejście]
+            sylaby = gen_sylaby
+        else:
+            if sylaby != gen_sylaby:
+                self.log.debug(f"Generowane: {gen_sylaby} wczytane: {sylaby}")
+                sylaby = gen_sylaby
+        self.sylaby = sylaby
+
         self.można_przerwać = False
         # TODO: można zrobić, żeby opcjonalnie zawsze przechodzić wszystkie linie
         # self.log.info(f"uruchom_liniE {wejście}, {nazwa_ustawień} {self.typ_generacji}")
@@ -100,9 +108,13 @@ class Fabryka():
             self.generacja_sylabizowana(1)
         self.numer_generacji += 1        
         if self.numer_generacji % self.loguj_postęp_co == 0:
-            self.log.info(f"{self.numer_generacji}: {self.wejście} - wygenerowano")
+            self.log.info(f"{self.numer_generacji}: {self.sylaby} - wygenerowano")
 
     def generacja_standardowa(self):
+        if not self.wejście:
+            return
+        if isinstance(self.wejście, tuple):
+            (self.wejście, słowo_całe, stenosłowa) = self.wejście
         # self.log.info(f"std in: {self.wejście}")
         if (self.wejście in self.istniejące_słowa \
           and not self.zawsze_startuj_wszystkie_linie) or\
@@ -130,7 +142,7 @@ class Fabryka():
                                               sylaby=self.sylaby,
                                               limit_prób=self.limit_prób,
                                               z_przedrostkiem=self.z_przedrostkiem)
-        # self.log.info(f"std: {stenosłowa}")
+        # self.log.info(f"std: {stenosłowa} {self.z_przedrostkiem}")
         # if self.jest_rdzeniem:
         #     if stenosłowa:
         #         self.generator.dodaj_rdzeń(self.wejście, stenosłowa[0])
@@ -181,14 +193,14 @@ class Fabryka():
         self.aktualizuj_wyjścia(udało_się, słowo_całe, stenosłowa)
 
     def generacja_ze_znakami_specjalnymi(self):
-        # self.log.info(f"Ze znakami: {self.wejście}")
         if not self.wejście:
             return
+        # self.log.info(f"Ze znakami: {self.wejście}")
         (self.wejście, słowo, stenosłowa) = self.wejście
         nowe_stenosłowa = self.generator.dodaj_znaki_specjalne_do_słów(stenosłowa,
                                                                        limit_niedopasowania=self.limit_niedopasowania,
                                                                        limit_prób=self.limit_prób)
-        # self.log.debug(f"{słowo} dodane specjalne: {nowe_stenosłowa}")
+        # self.log.info(f"{słowo} dodane specjalne: {nowe_stenosłowa}")
         dodane = self.generator.dodaj_słowa_do_słownika(słowo, nowe_stenosłowa)
         udało_się = len(dodane) > 0
         self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
@@ -208,6 +220,10 @@ class Fabryka():
         self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
 
     def generacja_sylabizowana(self, po_ile_sylab):
+        if not self.wejście:
+            return
+        if isinstance(self.wejście, tuple):
+            (self.wejście, słowo_całe, stenosłowa) = self.wejście
         # self.log.info(f"Grupuję po {po_ile_sylab}")
         czy_przedrostek = False
         if self.sprawdzaj_czy_jest_przedrostkiem and\

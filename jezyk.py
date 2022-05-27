@@ -10,104 +10,170 @@ class Język:
         self.fonemy_sylaby = SłownikDomyślny(lambda x: self.rozłóż_sylabę(x))
         self.wagi_fonemów = SłownikDomyślny(lambda x: self.policz_wagę_fonemu(x))
         self.fonemy_dwuznakowe = konfiguracja.fonemy_dwuznakowe
-        self.fonemy_samogłoskowe_klucze = konfiguracja.fonemy_samogłoskowe_klucze
-        self.fonemy_spółgłoskowe_klucze = konfiguracja.fonemy_spółgłoskowe_klucze
+        self.fonemy_samogłoskowe_klucze = list(konfiguracja.fonemy_samogłoskowe.keys())
+        self.fonemy_spółgłoskowe_klucze = list(konfiguracja.fonemy_spółgłoskowe.keys())
         self.fonemy_samogłoskowe = konfiguracja.fonemy_samogłoskowe
         self.fonemy_spółgłoskowe = konfiguracja.fonemy_spółgłoskowe
+        self.fonemy_niesamodzielne = konfiguracja.fonemy_niesamodzielne
         self.samogłoski = konfiguracja.samogłoski
+        self.zmiękczenie = konfiguracja.zmiękczenie
         self._samogłoski_re = re.compile(r'[aąeęioóuy]+')
 
     def rozbij(self, słowo):
         return [char for char in słowo]
 
-    def pseudo_sylabizuj(self, słowo):
+    # def pseudo_sylabizuj(self, słowo):
+    #     sylaby = []
+    #     poprzednia_sylaba = ""
+    #     bieżąca_sylaba = ""
+    #     możliwy_koniec_sylaby = False
+    #     samogłoska_w_obecnej_sylabie = False
+    #     while słowo:
+    #         obecna_litera = słowo[0]
+    #         słowo = słowo[1:]
+    #         if możliwy_koniec_sylaby:
+    #             if obecna_litera not in self.samogłoski:
+    #                 if samogłoska_w_obecnej_sylabie:
+    #                     sylaby.append(bieżąca_sylaba)
+    #                     bieżąca_sylaba = obecna_litera
+    #                     możliwy_koniec_sylaby = False
+    #                     samogłoska_w_obecnej_sylabie = False
+    #             else:
+    #                 bieżąca_sylaba += obecna_litera
+    #                 możliwy_koniec_sylaby = True
+    #                 samogłoska_w_obecnej_sylabie = True
+    #         else:
+    #             bieżąca_sylaba += obecna_litera
+    #             if obecna_litera in self.samogłoski:
+    #                 możliwy_koniec_sylaby = True
+    #                 samogłoska_w_obecnej_sylabie = True
+    #     if samogłoska_w_obecnej_sylabie:
+    #         sylaby.append(bieżąca_sylaba)
+    #     else:
+    #         if sylaby:
+    #             ostatnia_sylaba = sylaby.pop()
+    #         else:
+    #             ostatnia_sylaba = ""
+    #         ostatnia_sylaba += bieżąca_sylaba
+    #         sylaby.append(ostatnia_sylaba)
+    #     return sylaby
+
+    def sylabizuj(self, słowo):
+        # self.log.debug(f"Sylabizuję: {słowo}")
         sylaby = []
-        poprzednia_sylaba = ""
-        bieżąca_sylaba = ""
-        możliwy_koniec_sylaby = False
-        samogłoska_w_obecnej_sylabie = False
+        nowa_sylaba = ""
         while słowo:
-            obecna_litera = słowo[0]
-            słowo = słowo[1:]
-            if możliwy_koniec_sylaby:
-                if obecna_litera not in self.samogłoski:
-                    if samogłoska_w_obecnej_sylabie:
-                        sylaby.append(bieżąca_sylaba)
-                        bieżąca_sylaba = obecna_litera
-                        możliwy_koniec_sylaby = False
-                        samogłoska_w_obecnej_sylabie = False
+            (spół, słowo) = self.zdejmij_spółgłoski(słowo)
+            (samo, słowo) = self.zdejmij_samogłoskę(słowo)
+            if samo == self.zmiękczenie and słowo:
+                (plus, słowo) = self.zdejmij_samogłoskę(słowo)
+                samo += plus
+            nowa_sylaba += spół + samo
+            if słowo:
+                (spół, słowo) = self.zdejmij_spółgłoski(słowo)
+                if słowo:
+                    (koniec, początek) = self.wyznacz_granicę_sylab(spół)
+                    nowa_sylaba += koniec
+                    sylaby.append(nowa_sylaba)
+                    nowa_sylaba = początek
+                    continue
                 else:
-                    bieżąca_sylaba += obecna_litera
-                    możliwy_koniec_sylaby = True
-                    samogłoska_w_obecnej_sylabie = True
-            else:
-                bieżąca_sylaba += obecna_litera
-                if obecna_litera in self.samogłoski:
-                    możliwy_koniec_sylaby = True
-                    samogłoska_w_obecnej_sylabie = True
-        if samogłoska_w_obecnej_sylabie:
-            sylaby.append(bieżąca_sylaba)
-        else:
-            if sylaby:
-                ostatnia_sylaba = sylaby.pop()
-            else:
-                ostatnia_sylaba = ""
-            ostatnia_sylaba += bieżąca_sylaba
-            sylaby.append(ostatnia_sylaba)
+                    nowa_sylaba += spół
+            sylaby.append(nowa_sylaba)
+            nowa_sylaba = ""
+        # self.log.debug(f"Wyszło: {sylaby}")
         return sylaby
 
+    def zdejmij_spółgłoski(self, słowo):
+        wynik = ""
+        litera = słowo[0]
+        while słowo and litera not in self.samogłoski:
+            wynik += litera
+            słowo = słowo[1:]
+            if słowo:
+                litera = słowo[0]
+        return (wynik, słowo)
+
+    def zdejmij_samogłoskę(self, słowo):
+        if słowo:
+            litera = słowo[0]
+            if litera in self.samogłoski:
+                return (litera, słowo[1:])
+        return (nic, słowo)
+
+    def wyznacz_granicę_sylab(self, spółgłoski, rekurencja=False):
+        fonemy = self.fonemy(spółgłoski, spółgłoskowe=True)
+        długość = len(fonemy)
+        if długość == 0:
+            return ('', '')
+        elif długość == 1:
+            return ('', fonemy[0])
+        elif długość == 2:
+            if rekurencja:
+                para_fonemów = ''.join(fonemy)
+                # if para_fonemów in self.fonemy_niesamodzielne:
+                return ('', para_fonemów)
+            return (fonemy[0], fonemy[1])
+
+        para_startowa = ''.join(fonemy[:2])
+        para_końcowa = ''.join(fonemy[-2:])
+        if para_końcowa in self.fonemy_niesamodzielne:
+            (lewe, prawe) = self.wyznacz_granicę_sylab(''.join(fonemy[:-2]), rekurencja=True)
+            if not lewe:
+                return (prawe, para_końcowa)
+            return (lewe, prawe+para_końcowa)
+        elif para_startowa in self.fonemy_niesamodzielne:
+            (lewe, prawe) = self.wyznacz_granicę_sylab(''.join(fonemy[2:]), rekurencja=True)
+            return (para_startowa + lewe, prawe)
+        else:
+            return (fonemy[0], ''.join(fonemy[1:]))
 
     def rozłóż_sylabę(self, sylaba: str):
+        # self.log.info(f"Rozkładam {sylaba}")
+        zmiękczenie = False
         m = self._samogłoski_re.search(sylaba)
         if not m:
             # błąd = f"sylaba {sylaba} bez samogłosek"
-            # self.log.debug(błąd)
-            return (sylaba, nic, nic)
+            # self.log.error(błąd)
+            nagłos = self.fonemy(sylaba, True,  zmiękczenie)
+            return (nagłos, [], [])
         śródgłos = self.fonemy(m.group(0))
 
-        # Wykryj "i" które tylko zmiękcza, przesuń je do nagłosu
-        zmiękczenie = False
-        # if len(śródgłos) > 1 and śródgłos[0].startswith('i'):
-        if not sylaba.startswith('i') and śródgłos[0].startswith('i'):
+        # Wykryj zmiękczenie, przesuń je do nagłosu
+        # Detect palatalization, move it to first part of a syllabe
+        if self.zmiękczenie and not sylaba.startswith(self.zmiękczenie) \
+          and śródgłos[0].startswith(self.zmiękczenie):
             śródgłos = śródgłos[1:]
             zmiękczenie = True
-        nagłos = self.fonemy(re.split(self._samogłoski_re, sylaba)[0], zmiękczenie)
-        wygłos = self.fonemy(re.split(self._samogłoski_re, sylaba)[1])
-
-        # if sylaba == "au":
-        #     self.log.debug(f"Rozłożyłem {sylaba} na N: {nagłos} Ś: {śródgłos} W: {wygłos}")
+        nagłos = self.fonemy(re.split(self._samogłoski_re, sylaba)[0], True,  zmiękczenie)
+        wygłos = self.fonemy(re.split(self._samogłoski_re, sylaba)[1], True)
+        # self.log.info(f"Rozbita: ({nagłos}, {śródgłos}, {wygłos})")
         return (nagłos, śródgłos, wygłos)
 
-    def fonemy(self, słowo, zmiękczenie = False):    
-        znaki = self.rozbij(słowo)
+    def najdłuższy_fonem(self, znaki, klucze):
+        ile_znaków = len(znaki)
+        if ile_znaków > 1:
+            for i in range(1, ile_znaków + 1):
+                if znaki[:i] not in klucze:
+                    return znaki[:i-1]
+        return znaki
+
+    #  zmiękczenie == palatalization
+    def fonemy(self, znaki, spółgłoskowe = False, zmiękczenie = False):
+        # self.log.info(f"Fonemy dla: {znaki}")
         if zmiękczenie:
-            znaki.append("i")
+            znaki += self.zmiękczenie
+        klucze = self.fonemy_samogłoskowe_klucze
+        if spółgłoskowe:
+            klucze = self.fonemy_spółgłoskowe_klucze
 
         wynik = []
-        i = 0
-        ilość_znaków = len(znaki)
-        while i < ilość_znaków:
-            znak = znaki[i]
-            if znak in self.fonemy_dwuznakowe.keys():
-                if (i+1 < ilość_znaków) and znaki[i+1] in self.fonemy_dwuznakowe[znak]:
-                    następny_znak = znaki[i+1]
-                    if zmiękczenie and ((znak == "c" and następny_znak in ["z", "h"])\
-                      or (znak == "d" and następny_znak =="z")):
-                        if (i+2 < ilość_znaków) and znaki[i+2] == "i":
-                            i += 3
-                            wynik.append(znak + następny_znak + "i")
-                        else:
-                            i += 2
-                            wynik.append(znak + następny_znak)
-                    else:
-                        i += 2
-                        wynik.append(znak + następny_znak)
-                else:
-                    i += 1
-                    wynik.append(znak)
-            else:
-                i += 1
-                wynik.append(znak)
+        while znaki:
+            # self.log.info(f"znaki: {znaki}")
+            fonem = self.najdłuższy_fonem(znaki, klucze)
+            wynik.append(fonem)
+            znaki = znaki[len(fonem):]
+        # self.log.info(f"Zwracam: {wynik}")
         return wynik
 
     def policz_wagę_fonemu(self, x):
@@ -302,5 +368,3 @@ class Słowo:
         if self.klejone:
             return f"{{&{self.litery}}}"
         return f"{self.litery}"
-            
-    
