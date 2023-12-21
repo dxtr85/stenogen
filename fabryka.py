@@ -28,13 +28,13 @@ class Fabryka():
         self.typ_generacji = None
         self.numer_generacji = 0
         self.przedrostki = przedrostki
-        self.istniejące_słowa = set()
+        # self.istniejące_słowa = set()
         self.niepowodzenie_linii = None
         self.wyjście_z_poprzedniej_linii_niepowodzenia = None
         self.wejścia = []
 
-        for słowo in self.słownik.keys():
-            self.istniejące_słowa.add(słowo)
+        # for słowo in self.słownik.keys():
+        #     self.istniejące_słowa.add(słowo)
 
     def ustaw_przedrostki(self, przedrostki, generuj=False):
         self.przedrostki += przedrostki
@@ -116,9 +116,7 @@ class Fabryka():
         if isinstance(self.wejście, tuple):
             (self.wejście, słowo_całe, stenosłowa) = self.wejście
         # self.log.info(f"std in: {self.wejście}")
-        if (self.wejście in self.istniejące_słowa \
-          and not self.zawsze_startuj_wszystkie_linie) or\
-          self.wejście.isnumeric():
+        if self.wejście.isnumeric():
             # self.wejście_dodane = True
             # self.ile_dodano += 1
             return
@@ -143,18 +141,20 @@ class Fabryka():
                                               limit_prób=self.limit_prób,
                                               z_przedrostkiem=self.z_przedrostkiem)
         # self.log.info(f"std: {stenosłowa} {self.z_przedrostkiem}")
-        # if self.jest_rdzeniem:
-        #     if stenosłowa:
-        #         self.generator.dodaj_rdzeń(self.wejście, stenosłowa[0])
-        #     else:
-        #         self.log.error(f"Nie znalazłem kombinacji dla rdzenia '{self.wejście}'")
-        #     return
+        if self.jest_rdzeniem:
+            if stenosłowa:
+                ssłowo = stenosłowa[0]
+                for isłowo in stenosłowa[1:]:
+                    if isłowo.długość() < ssłowo.długość():
+                        ssłowo = isłowo
+                # self.stos.połóż_na_stosie(self.sylaby, słowo, ssłowo)
+                stenosłowa = [ssłowo]
+            else:
+                self.log.error(f"Nie znalazłem kombinacji dla rdzenia '{self.wejście}'")
         dodane = self.generator.dodaj_słowa_do_słownika(słowo, stenosłowa)
         udało_się = len(dodane) > 0
-        if udało_się:
-            self.stos.połóż_na_stosie(self.wejście, słowo, dodane)
-            if self.jest_przedrostkiem:
-                self.generator.przedrostki.add(self.wejście)
+        if udało_się and self.jest_przedrostkiem:
+            self.generator.przedrostki.add(self.wejście)
 
         # self.log.info(f"koniec std, {udało_się}, {słowo}, {stenosłowa}")
         self.aktualizuj_wyjścia(udało_się, słowo, stenosłowa)
@@ -170,24 +170,31 @@ class Fabryka():
         #        Można powtórzyć z drugim najdłuższym ciągiem sylab w przypadku
         #        niepowodzenia.
         #  TODO: uaktualnić słowo startowe jako przedrostek/łączone
-        dopasowania = self.stos.dopasuj_do_sylab(self.wejście)
+        dopasowanie = self.stos.dopasuj_do_sylab(self.sylaby)
+        # if dopasowania:
+        #     self.log.info(f"Stos zadziałał: {self.sylaby} {dopasowania}")
         łączone_stenosłowa = []
         udało_się = False
         stenosłowa = []
-        for (która_sylaba, słowo, stare_stenosłowa) in dopasowania:
+        if dopasowanie:
+            (która_sylaba, słowo, stare_stenosłowa) = dopasowanie
             stenosłowa = self.generator.wygeneruj(self.wejście,
                                                 limit_niedopasowania=self.limit_niedopasowania,
                                                 sylaby=self.sylaby[która_sylaba:],
                                                 limit_prób=self.limit_prób)
             łączone_stenosłowa = []
-            for stare_stenosłowo in stare_stenosłowa:
-                łączone_stenosłowa += stare_stenosłowo.kombinuj(stenosłowa)
-
-            dodane = self.generator.dodaj_słowa_do_słownika(słowo_całe, łączone_stenosłowa)
+            dodane = []
+            if stare_stenosłowa:
+                if isinstance(stare_stenosłowa, list):
+                    for stare_stenosłowo in stare_stenosłowa:
+                        łączone_stenosłowa += stare_stenosłowo.kombinuj(stenosłowa)
+                else:
+                    łączone_stenosłowa += stare_stenosłowa.kombinuj(stenosłowa)
+                dodane = self.generator.dodaj_słowa_do_słownika(słowo_całe, łączone_stenosłowa)
             udało_się = len(dodane) > 0
             if udało_się:
                 słowo.ustaw_rdzeń_użyty()
-                break
+                # break
 
         # self.log.info(f"koniec std, {udało_się}, {słowo}, {stenosłowa}")
         self.aktualizuj_wyjścia(udało_się, słowo_całe, stenosłowa)
@@ -271,10 +278,16 @@ class Fabryka():
             for początek in początki:
                 nowe_początki += początek.kombinuj(kontynuacje)
             początki = nowe_początki
+        if self.jest_rdzeniem:
+            if początki:
+                ssłowo = początki[0]
+                self.stos.połóż_na_stosie(self.sylaby, słowo, ssłowo)
+                self.generator.dodaj_rdzeń(słowo.litery, ssłowo)
+            else:
+                self.log.error(f"Nie znalazłem kombinacji dla rdzenia '{self.wejście}'")
+            return
         dodane = self.generator.dodaj_słowa_do_słownika(słowo, początki)
         udało_się = len(dodane) > 0
-        if udało_się:
-            self.stos.połóż_na_stosie(self.wejście, słowo, dodane)
 
         # self.log.info(f"koniec sylabizowania, {udało_się}, {słowo}, {początki}")
         self.aktualizuj_wyjścia(udało_się, słowo, początki)
@@ -285,11 +298,15 @@ class Fabryka():
             self.niepowodzenie_linii = self.wejście
             self.wyjście_z_poprzedniej_linii_niepowodzenia = (self.wejście, słowo, stenosłowa)
         else:
+            # self.log.debug(f"Kładę na stosie {self.sylaby} {stenosłowa}")
+            self.stos.połóż_na_stosie(self.sylaby, słowo, stenosłowa)
+            if self.jest_rdzeniem:
+                self.generator.dodaj_rdzeń(słowo.litery, stenosłowa[0])
             self.ile_dodano += 1
             if not self.zawsze_startuj_wszystkie_linie and self.ile_dodano > self.minimum_kombinacji_dodanych_per_słowo:
                 self.można_przerwać = True
             # self.wejście_dodane = True
-            self.istniejące_słowa.add(self.wejście)
+            # self.istniejące_słowa.add(słowo.litery)
 
     def grupuj_sylaby(self, sylaby, po_ile_sylab):
         # self.log.info(f"{self.wejście} sylaby: {sylaby}")

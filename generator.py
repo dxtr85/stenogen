@@ -30,6 +30,7 @@ class Generator():
         self.kombinacje = dict()
         self.przedrostki = set()
         self.rdzenie = dict()
+        self.rdzenie_klucze = set()
         self._zainicjalizuj_kombinacje()
         self.loguj_postęp_co = 10000 # Będzie log po tylu wygenerowanych słowach
         # self.postęp = 0
@@ -40,16 +41,28 @@ class Generator():
         self.modyfikator = Akord(self.log, "~", self.znaki_środka.copy(), 0)
         self.dbg = []#"sześć"]
 
+    def dodaj_rdzeń(self, litery, rdzeń):
+        # self.log.debug(f"Dodaję rdzeń: {rdzeń}")
+        if litery not in self.rdzenie_klucze:
+            self.rdzenie[litery] = rdzeń
+            self.rdzenie_klucze.add(litery)
+
     def usuń_rdzeń(self, rdzeń):
         if not rdzeń.jest_rdzeniem:
             # self.log.error(f"{rdzeń} nie jest rdzeniem")
             return
         if rdzeń.rdzeń_użyty:
-            log.debug(f"Nie usuwam {rdzeń.litery} bo jest używany")
+            # self.log.debug(f"Nie usuwam {rdzeń.litery} bo jest używany")
             return
-        for (kombinacja, _niedopasowanie) in self.słownik[rdzeń.litery]:
-            self.kombinacje.pop(kombinacja)
+        for akordy in self.słownik[rdzeń.litery]:
+            if isinstance(akordy, str):
+                self.kombinacje.pop(akordy)
+            else:
+                for kombinacja in akordy.keys():
+                    self.kombinacje.pop(kombinacja)
         self.słownik.pop(rdzeń.litery)
+        self.rdzenie.pop(rdzeń.litery)
+        self.rdzenie_klucze.remove(rdzeń.litery)
 
     def _zainicjalizuj_kombinacje(self):
         self.log.info(f"Inicjalizuję bazę generatora ze słownika z {len(self.słownik)} wpisów")
@@ -217,6 +230,7 @@ class Generator():
             nowe_akordy = []
             # for wygenerowany_akord in akordy:
             if not steno_przedrostki:
+                # self.log.info("wchodze")
                 steno_przedrostki = self.stenosłowa_dla_liter(przedrostek)
                 ## TODO: przypadek gdy więcej kombinacji ma takie samo niedopasowanie
                 ## wtedy jedna z tych kombinacji może zostać zabrana do innego słowa
@@ -361,5 +375,5 @@ class Generator():
                                                     kombinacja,
                                                     self.znaki_środka.copy(),
                                                     niedopasowanie)]))
-        # self.log.info(f"jakie zwracam: {akordy}")
+        # self.log.info(f"jakie zwracam: {stenosłowa}")
         return stenosłowa

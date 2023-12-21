@@ -1634,6 +1634,9 @@ class StenoSłowo:
             słowo += f"{akord}/"
         return słowo[:-1]
 
+    def długość(self):
+        return len(self.akordy)
+
     def ostatni_akord(self):
         return self.akordy[-1]
 

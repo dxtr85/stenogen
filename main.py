@@ -62,13 +62,12 @@ def main():
         przedrostki.append(linia)
     istniejące_słowa = set()
 
+    słownik = collections.defaultdict(dict)
+    linie_bazy = 0
     if args.baza:
         log.info(f"Czytam bazę słownika z {args.baza}")
         (słownik, linie_bazy) = czytacz.wczytaj_bazę_do_słownika(log, args.baza)
         log.info(f"Baza wczytana")
-    else:
-        słownik = collections.defaultdict(dict)
-        linie_bazy = 0
 
     log.info("Generuję klawisze dla małych i dużych liter...")
     # TODO: to trzeba przepuścić przez Fabrykę, bo za dużo tu hakowania
@@ -118,7 +117,7 @@ def main():
         klucz = klucz.upper()
         słownik[klucz][akord_prawy] = 0
 
-    (sylaby_słowa, ile_słów_wczytano) = czytacz.wczytaj_słowa(log, args.slowa)
+    # (sylaby_słowa, ile_słów_wczytano) = czytacz.wczytaj_słowa(log, args.slowa)
     generator = Generator(log, język, klawiatura, konfiguracja, słownik)
     fabryka = Fabryka(log, konfiguracja, słownik, przedrostki)
     czas_start = time.time()
@@ -169,83 +168,102 @@ def main():
             wejście = wejście[1:]
             ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="przedrostki", sylaby=sylaby)
         else:
-            for limit_niedopasowania in range(max_niedopasowanie):
-                ile_dodano = fabryka.uruchom_linie(wejście,
-                                                   nazwa_ustawień=nazwy_ustawień[limit_niedopasowania],
+            # for limit_niedopasowania in range(max_niedopasowanie):
+            ile_dodano = fabryka.uruchom_linie(wejście,
+                                                   nazwa_ustawień="jednosylabowiec",
                                                    sylaby=sylaby)
-                if ile_dodano > 0:
-                    break
+                # if ile_dodano > 0:
+                #     break
         if ile_dodano == 0:
             niepowodzenia.append((wejście, frekwencje[wejście]))
             ilość_niepowodzeń += 1
 
-    # log.info("Niepowodzenia:")
-    # for n in niepowodzenia:
-    #     log.info(f"{n}")
+    # log.info(f"Pozostałe niepowodzenia: {ilość_niepowodzeń}")
+    log.info("Generuję pojedyncze sylaby")
+    ilość_niepowodzeń_sylab = 0
+    pojedyncze_sylaby = collections.OrderedDict()
+    for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
+        for sylaba in sylaby:
+            pojedyncze_sylaby[sylaba] = None
+    for sylaba in pojedyncze_sylaby.keys():
+        # for limit_niedopasowania in range(max_niedopasowanie):
+        #     if limit_niedopasowania > 0:
+        #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
+        ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień="sylaba")
+                                           #nazwy_ustawień[limit_niedopasowania])
+        # if ile_dodano > 0:
+        #     break
+        if ile_dodano == 0:
+            niepowodzenia_sylab.append((sylaba, frekwencje[wejście]))
+            ilość_niepowodzeń_sylab += 1
+    log.info(f"Niepowodzenia sylab: {ilość_niepowodzeń_sylab}")
+    klucze_słownika = słownik.keys()
+    filtrowane_niepowodzenia = []
+    for n in niepowodzenia:
+        if n[0] not in klucze_słownika:
+            filtrowane_niepowodzenia.append(n)
+        # else:
+        #     log.info(f"{n[0]} dodane")
+    niepowodzenia_jednosylabowców = filtrowane_niepowodzenia
+    niepowodzenia = []
+    log.info(f"Niepowodzenia: {len(niepowodzenia_jednosylabowców)}")
+    
+
+    log.info("Generuję słowa dwusylabowe")
+    for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
+        if len(sylaby) != 2:
+            continue
+        if wejście.startswith('*'):
+            continue  # TODO: do poprawy
+            # wejście = wejście[1:]
+            # fabryka.uruchom_linie(wejście, nazwa_ustawień="rdzeń")
+            # ile_dodano = 1
+        elif wejście.startswith('&'):
+            wejście = wejście[1:]
+            ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="przedrostki", sylaby=sylaby)
+        else:
+            # for limit_niedopasowania in range(5, max_niedopasowanie):
+            ile_dodano = fabryka.uruchom_linie(wejście,
+                                                   nazwa_ustawień="dwusylabowiec",
+                                                   sylaby=sylaby)
+                # if ile_dodano > 0:
+                #     break
+        if ile_dodano == 0:
+            niepowodzenia.append((wejście, frekwencje[wejście]))
+            ilość_niepowodzeń += 1
 
     log.info(f"Pozostałe niepowodzenia: {ilość_niepowodzeń}")
-    # log.info("Generuję pojedyncze sylaby")
-    # ilość_niepowodzeń_sylab = 0
-    # pojedyncze_sylaby = collections.OrderedDict()
-    # for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
-    #     for sylaba in sylaby:
-    #         pojedyncze_sylaby[sylaba] = None
-    # for sylaba in pojedyncze_sylaby.keys():
-    #     # for limit_niedopasowania in range(max_niedopasowanie):
-    #     #     if limit_niedopasowania > 0:
-    #     #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
-    #     ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień="sylaba")
-    #                                        #nazwy_ustawień[limit_niedopasowania])
-    #     # if ile_dodano > 0:
-    #     #     break
-    #     if ile_dodano == 0:
-    #         niepowodzenia_sylab.append((sylaba, frekwencje[wejście]))
-    #         ilość_niepowodzeń_sylab += 1
-    # log.info(f"Niepowodzenia sylab: {ilość_niepowodzeń_sylab}")
+    log.info("Generuję niektóre podwójne sylaby")
+    podwójne_sylaby = collections.OrderedDict()
+    for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
+        ile_sylab = len(sylaby)
+        for i in range(0, ile_sylab - 1, 2):
+            podwójna_sylaba = sylaby[i] + sylaby[i+1]
+            # if podwójna_sylaba[-1] in konfiguracja.KonfiguracjaJęzyka.samogłoski:
+            podwójne_sylaby[podwójna_sylaba] = None
+    for sylaba in podwójne_sylaby.keys():
+        for limit_niedopasowania in range(max_niedopasowanie):
+        #     if limit_niedopasowania > 0:
+        #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
+            ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień=nazwy_ustawień[limit_niedopasowania])
+            if ile_dodano > 0:
+                break
+        if ile_dodano == 0:
+            niepowodzenia_sylab_podwójnych.append((sylaba, frekwencje[wejście]))
+    log.info(f"Niepowodzenia sylab podwójnych: {niepowodzenia_sylab_podwójnych}")
+    fabryka.zawsze_startuj_wszystkie_linie = False
 
-    # log.info("Generuję słowa dwusylabowe")
-    # for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
-    #     if len(sylaby) != 2:
-    #         continue
-    #     if wejście.startswith('*'):
-    #         continue  # TODO: do poprawy
-    #         # wejście = wejście[1:]
-    #         # fabryka.uruchom_linie(wejście, nazwa_ustawień="rdzeń")
-    #         # ile_dodano = 1
-    #     elif wejście.startswith('&'):
-    #         wejście = wejście[1:]
-    #         ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="przedrostki", sylaby=sylaby)
-    #     else:
-    #         for limit_niedopasowania in range(5, max_niedopasowanie):
-    #             ile_dodano = fabryka.uruchom_linie(wejście,
-    #                                                nazwa_ustawień=nazwy_ustawień[limit_niedopasowania],
-    #                                                sylaby=sylaby)
-    #             if ile_dodano > 0:
-    #                 break
-    #     if ile_dodano == 0:
-    #         niepowodzenia.append((wejście, frekwencje[wejście]))
-    #         ilość_niepowodzeń += 1
+    klucze_słownika = słownik.keys()
+    filtrowane_niepowodzenia = []
+    for n in niepowodzenia:
+        if n[0] not in klucze_słownika:
+            filtrowane_niepowodzenia.append(n)
+        # else:
+        #     log.info(f"{n[0]} dodane")
+    niepowodzenia = niepowodzenia_jednosylabowców + filtrowane_niepowodzenia
+    ilość_niepowodzeń = len(niepowodzenia)
+    log.info(f"Niepowodzenia: {ilość_niepowodzeń}")
 
-    # log.info(f"Pozostałe niepowodzenia: {ilość_niepowodzeń}")
-    # log.info("Generuję niektóre podwójne sylaby")
-    # podwójne_sylaby = collections.OrderedDict()
-    # for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
-    #     ile_sylab = len(sylaby)
-    #     for i in range(0, ile_sylab - 1, 2):
-    #         podwójna_sylaba = sylaby[i] + sylaby[i+1]
-    #         # if podwójna_sylaba[-1] in konfiguracja.KonfiguracjaJęzyka.samogłoski:
-    #         podwójne_sylaby[podwójna_sylaba] = None
-    # for sylaba in podwójne_sylaby.keys():
-    #     # for limit_niedopasowania in range(max_niedopasowanie):
-    #     #     if limit_niedopasowania > 0:
-    #     #         log.debug(f"Limit {limit_niedopasowania}, sylaba: {sylaba}")
-    #     ile_dodano = fabryka.uruchom_linie(sylaba, nazwa_ustawień="sylaby")
-    #                                        # =nazwy_ustawień[limit_niedopasowania])
-    #         # if ile_dodano > 0:
-    #         #     break
-    #     if ile_dodano == 0:
-    #         niepowodzenia_sylab_podwójnych.append((sylaba, frekwencje[wejście]))
-    # log.info(f"Niepowodzenia sylab podwójnych: {niepowodzenia_sylab_podwójnych}")
 
     # log.info("Generuję słowa trójsylabowe")
     # for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
@@ -297,26 +315,29 @@ def main():
     # log.info("Dodaję słowa z drzewa")
     # for (wejście, sylaby) in czytacz.czytaj_sylaby(args.słowa_z_drzewa):
     #     if wejście.startswith('*'):
-    #         continue  # TODO: do poprawy
-    #         # wejście = wejście[1:]
-    #         # fabryka.uruchom_linie(wejście, nazwa_ustawień="rdzeń", sylaby=sylaby)
-    #         # ile_dodano = 1
+    #         # continue  # TODO: do poprawy
+    #         wejście = wejście[1:]
+    #         fabryka.uruchom_linie(wejście, nazwa_ustawień="rdzeń", sylaby=sylaby)
+    #         ile_dodano = 1
     #     elif wejście.startswith('&'):
     #         wejście = wejście[1:]
     #         ile_dodano = fabryka.uruchom_linie(wejście, nazwa_ustawień="przedrostki", sylaby=sylaby)
     #     else:
-    #         for limit_niedopasowania in range(5, max_niedopasowanie):
-    #             ile_dodano = fabryka.uruchom_linie(wejście,
+    #         # for limit_niedopasowania in range(min(max_niedopasowanie, len(sylaby)), max_niedopasowanie):
+    #         limit_niedopasowania = 10
+    #         ile_dodano = fabryka.uruchom_linie(wejście,
     #                                                nazwa_ustawień=nazwy_ustawień[limit_niedopasowania],
     #                                                sylaby=sylaby)
-    #             if ile_dodano > 0:
-    #                 break
+    #             # if ile_dodano > 0:
+    #             #     break
     #     if ile_dodano == 0:
     #         if len(sylaby) < 3:
     #             potencjalne_niepowodzenia.append((wejście, frekwencje[wejście]))
     #         else:
     #             niepowodzenia.append((wejście, frekwencje[wejście]))
     #             ilość_niepowodzeń += 1
+
+
 
     #     wygenerowano += 1
     #     # log.info(f"Wyg: {wygenerowano}, max: {wygeneruj_max}")
